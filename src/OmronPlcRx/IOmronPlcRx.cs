@@ -17,7 +17,7 @@ namespace OmronPlcRx
         /// <value>
         /// The observe all.
         /// </value>
-        IObservable<string?> ObserveAll { get; }
+        IObservable<object?> ObserveAll { get; }
 
         /// <summary>
         /// Gets the errors.
