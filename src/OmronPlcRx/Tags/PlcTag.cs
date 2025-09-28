@@ -9,31 +9,25 @@ namespace OmronPlcRx.Tags
     /// PlcTag.
     /// </summary>
     /// <typeparam name="T">The data type.</typeparam>
-    public class PlcTag<T>
+    /// <remarks>
+    /// Initializes a new instance of the <see cref="PlcTag{T}"/> class.
+    /// </remarks>
+    /// <param name="tagName">The tag Name.</param>
+    /// <param name="address">The address.</param>
+    /// <exception cref="ArgumentNullException">
+    /// name
+    /// or
+    /// address.
+    /// </exception>
+    public class PlcTag<T>(string tagName, string address) : IPlcTag
     {
-        /// <summary>
-        /// Initializes a new instance of the <see cref="PlcTag{T}"/> class.
-        /// </summary>
-        /// <param name="tagName">The tag Name.</param>
-        /// <param name="address">The address.</param>
-        /// <exception cref="ArgumentNullException">
-        /// name
-        /// or
-        /// address.
-        /// </exception>
-        public PlcTag(string tagName, string address)
-        {
-            TagName = tagName ?? throw new ArgumentNullException(nameof(tagName));
-            Address = address ?? throw new ArgumentNullException(nameof(address));
-        }
-
         /// <summary>
         /// Gets the Tag Name.
         /// </summary>
         /// <value>
         /// The name.
         /// </value>
-        public string TagName { get; }
+        public string TagName { get; } = tagName ?? throw new ArgumentNullException(nameof(tagName));
 
         /// <summary>
         /// Gets the address.
@@ -41,15 +35,7 @@ namespace OmronPlcRx.Tags
         /// <value>
         /// The address.
         /// </value>
-        public string Address { get; }
-
-        /// <summary>
-        /// Gets a value indicating whether this instance is bit address.
-        /// </summary>
-        /// <value>
-        ///   <c>true</c> if this instance is bit address; otherwise, <c>false</c>.
-        /// </value>
-        public bool IsBitAddress => Address.Contains(".");
+        public string Address { get; } = address ?? throw new ArgumentNullException(nameof(address));
 
         /// <summary>
         /// Gets the value read.
@@ -57,14 +43,22 @@ namespace OmronPlcRx.Tags
         /// <value>
         /// The value.
         /// </value>
-        public T Value { get; internal set; }
+        public T? Value { get; internal set; }
 
         /// <summary>
-        /// Gets or sets the value to write.
+        /// Gets a value indicating whether this instance is bit address.
         /// </summary>
         /// <value>
-        /// The write value.
+        ///   <c>true</c> if this instance is bit address; otherwise, <c>false</c>.
         /// </value>
-        public T WriteValue { get; set; }
+        public Type TagType => typeof(T);
+
+        /// <summary>
+        /// Gets the value.
+        /// </summary>
+        /// <value>
+        /// The value.
+        /// </value>
+        object? IPlcTag.Value => Value;
     }
 }

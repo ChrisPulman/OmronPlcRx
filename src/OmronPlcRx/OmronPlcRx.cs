@@ -23,12 +23,13 @@ public sealed class OmronPlcRx : IOmronPlcRx
     private readonly OmronPLCConnection _plc;
     private readonly TimeSpan _pollInterval;
     private readonly ConcurrentDictionary<string, ITagEntry> _entries = new(StringComparer.OrdinalIgnoreCase);
-    private readonly ConcurrentDictionary<string, object> _subjects = new(StringComparer.OrdinalIgnoreCase); // value is BehaviorSubject<object?>
-    private readonly Subject<object?> _tagChanged = new();
+    private readonly ConcurrentDictionary<string, BehaviorSubject<object?>> _subjects = new(StringComparer.OrdinalIgnoreCase); // value is BehaviorSubject<object?>
+    private readonly Subject<IPlcTag?> _tagChanged = new();
     private readonly Subject<OmronPLCException?> _errors = new();
     private readonly CancellationTokenSource _cts = new();
     private readonly Task _pollLoop;
     private bool _disposed;
+    private volatile bool _plcInitialized;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="OmronPlcRx" /> class.
@@ -49,29 +50,24 @@ public sealed class OmronPlcRx : IOmronPlcRx
     }
 
     /// <summary>
-    /// ITagEntry.
+    /// Tag entry abstraction used internally for polymorphic read access.
     /// </summary>
     private interface ITagEntry
     {
-        /// <summary>
-        /// Gets the boxed value.
-        /// </summary>
-        /// <value>
-        /// The boxed value.
-        /// </value>
-        object BoxedValue { get; }
+        /// <summary>Gets the last cached value as a boxed object.</summary>
+        IPlcTag? Tag { get; }
 
         /// <summary>
-        /// Reads the asynchronous.
+        /// Reads the tag value from the PLC updating internal state.
         /// </summary>
-        /// <param name="plc">The PLC.</param>
-        /// <param name="ct">The ct.</param>
-        /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+        /// <param name="plc">PLC connection.</param>
+        /// <param name="ct">Cancellation token.</param>
+        /// <returns>True if the value changed; otherwise false.</returns>
         Task<bool> ReadAsync(OmronPLCConnection plc, CancellationToken ct);
     }
 
     /// <inheritdoc />
-    public IObservable<object?> ObserveAll => _tagChanged.AsObservable();
+    public IObservable<IPlcTag?> ObserveAll => _tagChanged.AsObservable();
 
     /// <inheritdoc />
     public IObservable<OmronPLCException?> Errors => _errors.AsObservable();
@@ -95,7 +91,7 @@ public sealed class OmronPlcRx : IOmronPlcRx
         var tag = new PlcTag<T>(tagName, variable);
         var entry = new TagEntry<T>(tag);
         _entries.AddOrUpdate(tagName, entry, (_, __) => entry);
-        _subjects.GetOrAdd(tagName, _ => new BehaviorSubject<object?>(default));
+        _subjects.GetOrAdd(tagName, _ => new(default));
     }
 
     /// <inheritdoc />
@@ -106,7 +102,7 @@ public sealed class OmronPlcRx : IOmronPlcRx
             throw new ArgumentNullException(nameof(tagName));
         }
 
-        var subject = (BehaviorSubject<object?>)_subjects.GetOrAdd(tagName, _ => new BehaviorSubject<object?>(default));
+        var subject = _subjects.GetOrAdd(tagName, _ => new(default));
         return subject.Select(v => v is null ? default : (T?)ConvertTo<T>(v));
     }
 
@@ -118,9 +114,9 @@ public sealed class OmronPlcRx : IOmronPlcRx
             throw new ArgumentNullException(nameof(tagName));
         }
 
-        if (_entries.TryGetValue(tagName, out var entry) && entry is TagEntry<T> typed)
+        if (_entries.TryGetValue(tagName, out var entry) && entry is TagEntry<T> typed && typed.Tag is PlcTag<T> plcTag)
         {
-            return typed.Tag.Value;
+            return plcTag.Value;
         }
 
         return default;
@@ -139,7 +135,6 @@ public sealed class OmronPlcRx : IOmronPlcRx
             throw new KeyNotFoundException($"Tag '{tagName}' not found or incorrect type.");
         }
 
-        // Write to PLC synchronously by scheduling (do not block caller)
         _ = Task.Run(async () =>
         {
             try
@@ -173,13 +168,10 @@ public sealed class OmronPlcRx : IOmronPlcRx
         {
         }
 
-        foreach (var s in _subjects.Values)
+        foreach (var bs in _subjects.Values)
         {
-            if (s is BehaviorSubject<object?> bs)
-            {
-                bs.OnCompleted();
-                bs.Dispose();
-            }
+            bs.OnCompleted();
+            bs.Dispose();
         }
 
         _tagChanged.OnCompleted();
@@ -204,7 +196,7 @@ public sealed class OmronPlcRx : IOmronPlcRx
     {
         var dotIndex = address.IndexOf('.');
         string basePart;
-        string bitPart = null;
+        string? bitPart = null;
         if (dotIndex >= 0)
         {
             basePart = address.Substring(0, dotIndex);
@@ -273,6 +265,20 @@ public sealed class OmronPlcRx : IOmronPlcRx
 
     private async Task PollLoopAsync()
     {
+        // Lazy initialize PLC once before first poll
+        if (!_plcInitialized)
+        {
+            try
+            {
+                await _plc.InitializeAsync(_cts.Token).ConfigureAwait(false);
+                _plcInitialized = true;
+            }
+            catch (Exception ex)
+            {
+                _errors.OnNext(new OmronPLCException("PLC initialization failed", ex));
+            }
+        }
+
         while (!_cts.IsCancellationRequested)
         {
             try
@@ -289,14 +295,14 @@ public sealed class OmronPlcRx : IOmronPlcRx
                     try
                     {
                         var changed = await entry.ReadAsync(_plc, _cts.Token).ConfigureAwait(false);
-                        if (changed)
+                        if (changed && entry.Tag is IPlcTag tag)
                         {
-                            if (_subjects.TryGetValue(name, out var obj) && obj is BehaviorSubject<object?> subj)
+                            if (_subjects.TryGetValue(name, out var subj))
                             {
-                                subj.OnNext(entry.BoxedValue);
+                                subj.OnNext(tag.Value);
                             }
 
-                            _tagChanged.OnNext(name);
+                            _tagChanged.OnNext(tag);
                         }
                     }
                     catch (OmronPLCException ex)
@@ -339,26 +345,25 @@ public sealed class OmronPlcRx : IOmronPlcRx
             var b = Convert.ToBoolean(value);
             if (bitIndex is null)
             {
-                // treat as word bool (0/1)
                 var wordVal = (short)(b ? 1 : 0);
-                await _plc.WriteWordsAsync(new short[] { wordVal }, addr, ToWordType(area), ct).ConfigureAwait(false);
+                await _plc.WriteWordsAsync([wordVal], addr, ToWordType(area), ct).ConfigureAwait(false);
             }
             else
             {
-                await _plc.WriteBitsAsync(new bool[] { b }, addr, bitIndex.Value, ToBitType(area), ct).ConfigureAwait(false);
+                await _plc.WriteBitsAsync([b], addr, bitIndex.Value, ToBitType(area), ct).ConfigureAwait(false);
             }
         }
         else if (typeof(T) == typeof(short))
         {
             var s = Convert.ToInt16(value);
-            await _plc.WriteWordsAsync(new short[] { s }, addr, ToWordType(area), ct).ConfigureAwait(false);
+            await _plc.WriteWordsAsync([s], addr, ToWordType(area), ct).ConfigureAwait(false);
         }
         else if (typeof(T) == typeof(int))
         {
             var i = Convert.ToInt32(value);
             var hi = (ushort)((i >> 16) & 0xFFFF);
             var lo = (ushort)(i & 0xFFFF);
-            short[] words = { unchecked((short)hi), unchecked((short)lo) };
+            short[] words = [unchecked((short)hi), unchecked((short)lo)];
             await _plc.WriteWordsAsync(words, addr, ToWordType(area), ct).ConfigureAwait(false);
         }
         else if (typeof(T) == typeof(float))
@@ -372,28 +377,25 @@ public sealed class OmronPlcRx : IOmronPlcRx
 
             var hi = (ushort)((bytes[0] << 8) | bytes[1]);
             var lo = (ushort)((bytes[2] << 8) | bytes[3]);
-            short[] words = { unchecked((short)hi), unchecked((short)lo) };
+            short[] words = [unchecked((short)hi), unchecked((short)lo)];
             await _plc.WriteWordsAsync(words, addr, ToWordType(area), ct).ConfigureAwait(false);
         }
         else
         {
             throw new NotSupportedException($"Write not supported for type '{typeof(T).Name}'");
         }
-
-        entry.Tag.WriteValue = value;
     }
 
     private sealed class TagEntry<T>(PlcTag<T> tag) : ITagEntry
     {
-        public PlcTag<T> Tag { get; } = tag;
+        /// <summary>Gets the strongly typed tag.</summary>
+        public IPlcTag Tag { get; } = tag;
 
-        public object BoxedValue => Tag.Value;
-
+        /// <inheritdoc />
         public async Task<bool> ReadAsync(OmronPLCConnection plc, CancellationToken ct)
         {
             var (area, addr, bitIndex) = ParseAddress(Tag.Address);
             object newVal;
-
             if (typeof(T) == typeof(bool))
             {
                 if (bitIndex is null)
@@ -441,9 +443,9 @@ public sealed class OmronPlcRx : IOmronPlcRx
                 throw new NotSupportedException($"Tag type '{typeof(T).Name}' not supported.");
             }
 
-            if (!Equals(newVal, Tag.Value))
+            if (!Equals(newVal, Tag.Value) && Tag is PlcTag<T> plcTag)
             {
-                Tag.Value = (T)newVal;
+                plcTag.Value = (T)newVal;
                 return true;
             }
 
