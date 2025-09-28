@@ -8,12 +8,12 @@ namespace OmronPlcRx.Core.Requests;
 
 internal sealed class ReadClockRequest : FINSRequest
 {
-    private ReadClockRequest(OmronPLC plc)
+    private ReadClockRequest(OmronPLCConnection plc)
         : base(plc)
     {
     }
 
-    internal static ReadClockRequest CreateNew(OmronPLC plc) => new(plc)
+    internal static ReadClockRequest CreateNew(OmronPLCConnection plc) => new(plc)
     {
         FunctionCode = (byte)Enums.FunctionCode.TimeData,
         SubFunctionCode = (byte)TimeDataFunctionCode.ReadClock,

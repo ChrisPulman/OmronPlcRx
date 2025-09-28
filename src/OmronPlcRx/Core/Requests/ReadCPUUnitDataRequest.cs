@@ -8,12 +8,12 @@ namespace OmronPlcRx.Core.Requests;
 
 internal sealed class ReadCPUUnitDataRequest : FINSRequest
 {
-    private ReadCPUUnitDataRequest(OmronPLC plc)
+    private ReadCPUUnitDataRequest(OmronPLCConnection plc)
         : base(plc)
     {
     }
 
-    internal static ReadCPUUnitDataRequest CreateNew(OmronPLC plc) => new(plc)
+    internal static ReadCPUUnitDataRequest CreateNew(OmronPLCConnection plc) => new(plc)
     {
         FunctionCode = (byte)Enums.FunctionCode.MachineConfiguration,
         SubFunctionCode = (byte)MachineConfigurationFunctionCode.ReadCPUUnitData,

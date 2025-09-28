@@ -10,7 +10,7 @@ namespace OmronPlcRx.Core.Requests;
 
 internal sealed class WriteMemoryAreaWordRequest : FINSRequest
 {
-    private WriteMemoryAreaWordRequest(OmronPLC plc)
+    private WriteMemoryAreaWordRequest(OmronPLCConnection plc)
         : base(plc)
     {
     }
@@ -21,7 +21,7 @@ internal sealed class WriteMemoryAreaWordRequest : FINSRequest
 
     internal short[]? Values { get; set; }
 
-    internal static WriteMemoryAreaWordRequest CreateNew(OmronPLC plc, ushort startAddress, MemoryWordDataType dataType, short[] values) => new(plc)
+    internal static WriteMemoryAreaWordRequest CreateNew(OmronPLCConnection plc, ushort startAddress, MemoryWordDataType dataType, short[] values) => new(plc)
     {
         FunctionCode = (byte)Enums.FunctionCode.MemoryArea,
         SubFunctionCode = (byte)MemoryAreaFunctionCode.Write,

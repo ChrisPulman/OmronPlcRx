@@ -12,7 +12,7 @@ internal abstract class FINSRequest
     internal const int HeaderLength = 10;
     internal const int CommandLength = 2;
 
-    protected FINSRequest(OmronPLC plc)
+    protected FINSRequest(OmronPLCConnection plc)
     {
         if (plc.Channel is TCPChannel)
         {

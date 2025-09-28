@@ -3,13 +3,14 @@
 
 using System;
 using System.Collections.Generic;
+using OmronPlcRx.Core.Converters;
 using OmronPlcRx.Core.Enums;
 
 namespace OmronPlcRx.Core.Requests;
 
 internal sealed class WriteClockRequest : FINSRequest
 {
-    private WriteClockRequest(OmronPLC plc)
+    private WriteClockRequest(OmronPLCConnection plc)
         : base(plc)
     {
     }
@@ -18,7 +19,7 @@ internal sealed class WriteClockRequest : FINSRequest
 
     internal byte DayOfWeek { get; set; }
 
-    internal static WriteClockRequest CreateNew(OmronPLC plc, DateTime dateTime, byte dayOfWeek) => new(plc)
+    internal static WriteClockRequest CreateNew(OmronPLCConnection plc, DateTime dateTime, byte dayOfWeek) => new(plc)
     {
         FunctionCode = (byte)Enums.FunctionCode.TimeData,
         SubFunctionCode = (byte)TimeDataFunctionCode.WriteClock,

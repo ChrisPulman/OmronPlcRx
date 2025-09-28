@@ -1,12 +1,12 @@
 ﻿// Copyright (c) Chris Pulman. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
-namespace OmronPlcRx;
+namespace OmronPlcRx.Results;
 
 /// <summary>
-/// Result of a Write Bits operation.
+/// Result of a Read Cycle Time operation.
 /// </summary>
-public readonly record struct WriteBitsResult
+public readonly record struct ReadCycleTimeResult
 {
     /// <summary>Gets the total bytes sent.</summary>
     public int BytesSent { get; init; }
@@ -22,4 +22,13 @@ public readonly record struct WriteBitsResult
 
     /// <summary>Gets the duration in milliseconds.</summary>
     public double Duration { get; init; }
+
+    /// <summary>Gets the minimum cycle time in milliseconds.</summary>
+    public double MinimumCycleTime { get; init; }
+
+    /// <summary>Gets the maximum cycle time in milliseconds.</summary>
+    public double MaximumCycleTime { get; init; }
+
+    /// <summary>Gets the average cycle time in milliseconds.</summary>
+    public double AverageCycleTime { get; init; }
 }
