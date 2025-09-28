@@ -7,12 +7,15 @@
     <LangVersion>preview</LangVersion>
   </PropertyGroup>
 
-  <ItemGroup>
+  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
     <PackageReference Include="PolySharp" Version="1.15.0">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="System.Memory" Version="4.6.3" />
+  </ItemGroup>
+  
+  <ItemGroup>
     <PackageReference Include="System.Reactive" Version="6.0.2" />
   </ItemGroup>
 
