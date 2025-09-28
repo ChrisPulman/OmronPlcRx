@@ -1,12 +1,12 @@
 ﻿// Copyright (c) Chris Pulman. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
-namespace OmronPlcRx;
+namespace OmronPlcRx.Results;
 
 /// <summary>
-/// Result of a Read Words operation.
+/// Result of a Read Bits operation.
 /// </summary>
-public readonly record struct ReadWordsResult
+public readonly record struct ReadBitsResult
 {
     /// <summary>Gets the total bytes sent.</summary>
     public int BytesSent { get; init; }
@@ -23,6 +23,6 @@ public readonly record struct ReadWordsResult
     /// <summary>Gets the duration in milliseconds.</summary>
     public double Duration { get; init; }
 
-    /// <summary>Gets the word values read.</summary>
-    public short[] Values { get; init; }
+    /// <summary>Gets the bit values read.</summary>
+    public bool[] Values { get; init; }
 }

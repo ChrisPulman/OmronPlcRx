@@ -10,7 +10,7 @@ namespace OmronPlcRx.Core.Requests;
 
 internal sealed class WriteMemoryAreaBitRequest : FINSRequest
 {
-    private WriteMemoryAreaBitRequest(OmronPLC plc)
+    private WriteMemoryAreaBitRequest(OmronPLCConnection plc)
         : base(plc)
     {
     }
@@ -23,7 +23,7 @@ internal sealed class WriteMemoryAreaBitRequest : FINSRequest
 
     internal bool[]? Values { get; set; }
 
-    internal static WriteMemoryAreaBitRequest CreateNew(OmronPLC plc, ushort address, byte startBitIndex, MemoryBitDataType dataType, bool[] values) => new(plc)
+    internal static WriteMemoryAreaBitRequest CreateNew(OmronPLCConnection plc, ushort address, byte startBitIndex, MemoryBitDataType dataType, bool[] values) => new(plc)
     {
         FunctionCode = (byte)Enums.FunctionCode.MemoryArea,
         SubFunctionCode = (byte)MemoryAreaFunctionCode.Write,

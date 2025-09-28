@@ -123,7 +123,7 @@ internal abstract class BaseChannel : IDisposable
                 }
             }
 
-            throw new OmronException("Received a FINS Error Response from Omron PLC '" + RemoteHost + ":" + Port + "'", e);
+            throw new OmronPLCException("Received a FINS Error Response from Omron PLC '" + RemoteHost + ":" + Port + "'", e);
         }
     }
 
