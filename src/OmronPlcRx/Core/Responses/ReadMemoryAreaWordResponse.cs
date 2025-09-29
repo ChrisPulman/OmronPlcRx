@@ -1,8 +1,6 @@
 ﻿// Copyright (c) Chris Pulman. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
-using System;
-using System.Collections.Generic;
 using OmronPlcRx.Core.Requests;
 
 namespace OmronPlcRx.Core.Responses;
@@ -22,8 +20,7 @@ internal static class ReadMemoryAreaWordResponse
         for (int i = 0, w = 0; i < request.Length * 2; i += 2, w++)
         {
             // Data is big-endian per protocol, convert to host order (little-endian)
-            var value = (short)((data![i] << 8) | data[i + 1]);
-            values[w] = value;
+            values[w] = (short)((data![i] << 8) | data[i + 1]);
         }
 
         return values;

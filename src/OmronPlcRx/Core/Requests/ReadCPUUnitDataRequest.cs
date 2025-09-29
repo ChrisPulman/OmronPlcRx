@@ -19,8 +19,5 @@ internal sealed class ReadCPUUnitDataRequest : FINSRequest
         SubFunctionCode = (byte)MachineConfigurationFunctionCode.ReadCPUUnitData,
     };
 
-    protected override List<byte> BuildRequestData() =>
-        [
-            0
-        ];
+    protected override List<byte> BuildRequestData() => [0];
 }

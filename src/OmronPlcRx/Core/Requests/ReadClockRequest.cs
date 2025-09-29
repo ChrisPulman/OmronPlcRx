@@ -19,5 +19,5 @@ internal sealed class ReadClockRequest : FINSRequest
         SubFunctionCode = (byte)TimeDataFunctionCode.ReadClock,
     };
 
-    protected override List<byte> BuildRequestData() => new();
+    protected override List<byte> BuildRequestData() => [];
 }
