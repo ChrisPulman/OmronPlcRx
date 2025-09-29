@@ -503,7 +503,9 @@ public sealed class OmronPlcRx : IOmronPlcRx
             var i = Convert.ToInt32(value);
             var hi = (ushort)((i >> 16) & 0xFFFF);
             var lo = (ushort)(i & 0xFFFF);
-            short[] words = [unchecked((short)hi), unchecked((short)lo)];
+
+            // PLC expects low word first
+            short[] words = [unchecked((short)lo), unchecked((short)hi)];
             await _plc.WriteWordsAsync(words, addr2, ToWordType(area2), ct).ConfigureAwait(false);
         }
         else if (typeof(T) == typeof(uint))
@@ -511,7 +513,7 @@ public sealed class OmronPlcRx : IOmronPlcRx
             var ui = Convert.ToUInt32(value);
             var hi = (ushort)((ui >> 16) & 0xFFFF);
             var lo = (ushort)(ui & 0xFFFF);
-            short[] words = [unchecked((short)hi), unchecked((short)lo)];
+            short[] words = [unchecked((short)lo), unchecked((short)hi)];
             await _plc.WriteWordsAsync(words, addr2, ToWordType(area2), ct).ConfigureAwait(false);
         }
         else if (typeof(T) == typeof(float))
@@ -520,12 +522,15 @@ public sealed class OmronPlcRx : IOmronPlcRx
             var bytes = BitConverter.GetBytes(f);
             if (BitConverter.IsLittleEndian)
             {
-                Array.Reverse(bytes);
+                Array.Reverse(bytes); // bytes now big-endian overall
             }
 
-            var hi = (ushort)((bytes[0] << 8) | bytes[1]);
-            var lo = (ushort)((bytes[2] << 8) | bytes[3]);
-            short[] words = [unchecked((short)hi), unchecked((short)lo)];
+            // bytes[0..1] = high-order 16 bits, bytes[2..3] = low-order 16 bits (after reversal)
+            var highWord = (ushort)((bytes[0] << 8) | bytes[1]);
+            var lowWord = (ushort)((bytes[2] << 8) | bytes[3]);
+
+            // Write low word first, then high word
+            short[] words = [unchecked((short)lowWord), unchecked((short)highWord)];
             await _plc.WriteWordsAsync(words, addr2, ToWordType(area2), ct).ConfigureAwait(false);
         }
         else if (typeof(T) == typeof(double))
@@ -534,51 +539,32 @@ public sealed class OmronPlcRx : IOmronPlcRx
             var bytes = BitConverter.GetBytes(d);
             if (BitConverter.IsLittleEndian)
             {
-                Array.Reverse(bytes);
+                Array.Reverse(bytes); // big-endian ordering overall
             }
 
-            var words = new short[4];
-            for (var i = 0; i < 4; i++)
-            {
-                var hiB = bytes[i * 2];
-                var loB = bytes[(i * 2) + 1];
-                var w = (short)((hiB << 8) | loB);
-                words[i] = w;
-            }
+            // Construct 4 words: bytes[0..1] high-most ... bytes[6..7] low-most; need to output low words first
+            var wHigh0 = (ushort)((bytes[0] << 8) | bytes[1]);
+            var wHigh1 = (ushort)((bytes[2] << 8) | bytes[3]);
+            var wLow2 = (ushort)((bytes[4] << 8) | bytes[5]);
+            var wLow3 = (ushort)((bytes[6] << 8) | bytes[7]);
 
+            // Order: low words first, then high words
+            short[] words = [unchecked((short)wLow2), unchecked((short)wLow3), unchecked((short)wHigh0), unchecked((short)wHigh1)];
             await _plc.WriteWordsAsync(words, addr2, ToWordType(area2), ct).ConfigureAwait(false);
-        }
-        else if (typeof(T) == typeof(Bcd16))
-        {
-            var numeric = ((Bcd16)(object)value).Value;
-            var bcdBytes = BCDConverter.GetBCDBytes(numeric);
-            var word = BitConverter.ToInt16(bcdBytes, 0);
-            await _plc.WriteWordsAsync([word], addr2, ToWordType(area2), ct).ConfigureAwait(false);
-        }
-        else if (typeof(T) == typeof(BcdU16))
-        {
-            var numeric = ((BcdU16)(object)value).Value;
-            var bcdBytes = BCDConverter.GetBCDBytes(numeric);
-            var word = BitConverter.ToInt16(bcdBytes, 0);
-            await _plc.WriteWordsAsync([word], addr2, ToWordType(area2), ct).ConfigureAwait(false);
         }
         else if (typeof(T) == typeof(Bcd32))
         {
             var numeric = ((Bcd32)(object)value).Value;
-            var bcdWords = BCDConverter.GetBCDWords(numeric);
-            short[] words = [bcdWords[1], bcdWords[0]];
+            var bcdWords = BCDConverter.GetBCDWords(numeric); // assume [lowWord, highWord]
+            short[] words = [bcdWords[0], bcdWords[1]]; // low first
             await _plc.WriteWordsAsync(words, addr2, ToWordType(area2), ct).ConfigureAwait(false);
         }
         else if (typeof(T) == typeof(BcdU32))
         {
             var numeric = ((BcdU32)(object)value).Value;
             var bcdWords = BCDConverter.GetBCDWords(numeric);
-            short[] words = [bcdWords[1], bcdWords[0]];
+            short[] words = [bcdWords[0], bcdWords[1]];
             await _plc.WriteWordsAsync(words, addr2, ToWordType(area2), ct).ConfigureAwait(false);
-        }
-        else
-        {
-            throw new NotSupportedException($"Write not supported for type '{typeof(T).Name}'");
         }
     }
 
@@ -661,23 +647,27 @@ public sealed class OmronPlcRx : IOmronPlcRx
             else if (typeof(T) == typeof(int))
             {
                 var words = await plc.ReadWordsAsync(addr2, 2, ToWordType(area2), ct).ConfigureAwait(false);
-                var hi = (ushort)words.Values[0];
-                var lo = (ushort)words.Values[1];
+
+                // PLC provides low word first
+                var lo = (ushort)words.Values[0];
+                var hi = (ushort)words.Values[1];
                 var composite = ((uint)hi << 16) | lo;
                 newVal = unchecked((int)composite);
             }
             else if (typeof(T) == typeof(uint))
             {
                 var words = await plc.ReadWordsAsync(addr2, 2, ToWordType(area2), ct).ConfigureAwait(false);
-                var hi = (uint)(ushort)words.Values[0];
-                var lo = (uint)(ushort)words.Values[1];
+                var lo = (uint)(ushort)words.Values[0];
+                var hi = (uint)(ushort)words.Values[1];
                 newVal = (hi << 16) | lo;
             }
             else if (typeof(T) == typeof(float))
             {
                 var words = await plc.ReadWordsAsync(addr2, 2, ToWordType(area2), ct).ConfigureAwait(false);
-                var hi = (ushort)words.Values[0];
-                var lo = (ushort)words.Values[1];
+
+                // low word first
+                var lo = (ushort)words.Values[0];
+                var hi = (ushort)words.Values[1];
                 var bytes = new byte[4]
                 {
                     (byte)(hi >> 8), (byte)(hi & 0xFF), (byte)(lo >> 8), (byte)(lo & 0xFF)
@@ -692,14 +682,19 @@ public sealed class OmronPlcRx : IOmronPlcRx
             else if (typeof(T) == typeof(double))
             {
                 var words = await plc.ReadWordsAsync(addr2, 4, ToWordType(area2), ct).ConfigureAwait(false);
-                var bytes = new byte[8];
-                for (var i = 0; i < 4; i++)
-                {
-                    var w = (ushort)words.Values[i];
-                    bytes[i * 2] = (byte)(w >> 8);
-                    bytes[(i * 2) + 1] = (byte)(w & 0xFF);
-                }
 
+                // words: [low2][low3][high0][high1]
+                var w0 = (ushort)words.Values[2];
+                var w1 = (ushort)words.Values[3];
+                var w2 = (ushort)words.Values[0];
+                var w3 = (ushort)words.Values[1];
+                var bytes = new byte[8]
+                {
+                    (byte)(w0 >> 8), (byte)(w0 & 0xFF),
+                    (byte)(w1 >> 8), (byte)(w1 & 0xFF),
+                    (byte)(w2 >> 8), (byte)(w2 & 0xFF),
+                    (byte)(w3 >> 8), (byte)(w3 & 0xFF)
+                };
                 if (BitConverter.IsLittleEndian)
                 {
                     Array.Reverse(bytes);
@@ -707,33 +702,19 @@ public sealed class OmronPlcRx : IOmronPlcRx
 
                 newVal = BitConverter.ToDouble(bytes, 0);
             }
-            else if (typeof(T) == typeof(Bcd16))
-            {
-                var words = await plc.ReadWordsAsync(addr2, 1, ToWordType(area2), ct).ConfigureAwait(false);
-                var raw = words.Values[0];
-                var val = BCDConverter.ToInt16(raw);
-                newVal = new Bcd16(val);
-            }
-            else if (typeof(T) == typeof(BcdU16))
-            {
-                var words = await plc.ReadWordsAsync(addr2, 1, ToWordType(area2), ct).ConfigureAwait(false);
-                var raw = words.Values[0];
-                var val = BCDConverter.ToUInt16(raw);
-                newVal = new BcdU16(val);
-            }
             else if (typeof(T) == typeof(Bcd32))
             {
                 var words = await plc.ReadWordsAsync(addr2, 2, ToWordType(area2), ct).ConfigureAwait(false);
-                var high = words.Values[0];
-                var low = words.Values[1];
+                var low = words.Values[0];
+                var high = words.Values[1];
                 var val = BCDConverter.ToInt32(low, high);
                 newVal = new Bcd32(val);
             }
             else if (typeof(T) == typeof(BcdU32))
             {
                 var words = await plc.ReadWordsAsync(addr2, 2, ToWordType(area2), ct).ConfigureAwait(false);
-                var high = words.Values[0];
-                var low = words.Values[1];
+                var low = words.Values[0];
+                var high = words.Values[1];
                 var val = BCDConverter.ToUInt32(low, high);
                 newVal = new BcdU32(val);
             }
