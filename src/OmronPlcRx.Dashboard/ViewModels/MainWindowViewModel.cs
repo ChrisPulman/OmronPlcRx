@@ -1,18 +1,15 @@
 // Copyright (c) Chris Pulman. All rights reserved.
 // Licensed under the MIT license.
-using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Reactive;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Reflection;
-using System.Threading.Tasks;
 using DynamicData;
 using ReactiveUI;
 using OmronPlcRx.Enums;
 using PlcLib = global::OmronPlcRx;
-using OmronPlcRxDashboard.ViewModels;
 
 namespace OmronPlcRxDashboard.ViewModels;
 
@@ -29,7 +26,7 @@ public sealed class MainWindowViewModel : ReactiveObject, IDisposable
     {
         _tags.Connect().Bind(out var ro).Subscribe().DisposeWith(_disposables);
         Tags = ro;
-        ConnectionMethods = Enum.GetValues(typeof(ConnectionMethod));
+        ConnectionMethods = Enum.GetValues<ConnectionMethod>();
         var canConnect = this.WhenAnyValue(v => v.IsConnected).Select(c => !c);
         var canDisconnect = this.WhenAnyValue(v => v.IsConnected);
         ConnectCommand = ReactiveCommand.CreateFromTask(ConnectAsync, canConnect);
@@ -91,11 +88,8 @@ public sealed class MainWindowViewModel : ReactiveObject, IDisposable
 
     private void Disconnect()
     {
-        if (_plc is not null)
-        {
-            _plc.Dispose();
-            _plc = null;
-        }
+        _plc?.Dispose();
+        _plc = null;
         IsConnected = false;
         PLCType = null;
         ControllerModel = null;

@@ -1,7 +1,6 @@
 // Copyright (c) Chris Pulman. All rights reserved.
 // Licensed under the MIT license.
-using System;
-using System.Collections.Generic;
+
 using System.Reactive;
 using System.Reactive.Linq;
 using System.Text.RegularExpressions;

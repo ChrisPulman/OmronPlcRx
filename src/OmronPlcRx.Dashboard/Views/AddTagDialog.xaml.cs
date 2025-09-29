@@ -5,12 +5,9 @@ using OmronPlcRxDashboard.ViewModels;
 
 namespace OmronPlcRxDashboard.Views;
 
-public partial class AddTagDialog : Window
+public partial class AddTagDialog
 {
-    public AddTagDialog()
-    {
-        InitializeComponent();
-    }
+    public AddTagDialog() => InitializeComponent();
 
     public AddTagViewModel? ViewModel => DataContext as AddTagViewModel;
 

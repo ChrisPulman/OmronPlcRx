@@ -10,6 +10,7 @@
     <AssemblyName>OmronPlcRx.Dashboard</AssemblyName>
     <NoWarn>$(NoWarn);SA1636;SA1600;SA1513;SA1503;SA1201;SA1210;SA1214;SA1516;SA1515;SA1208;SA1501;SA1611;SA1601;SA1202;SA1209;SA1111;SA1005;SA1009;SA1025</NoWarn>
     <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
+    <IsPackable>false</IsPackable>
   </PropertyGroup>
 
   <ItemGroup>
@@ -17,9 +18,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="ReactiveUI" Version="19.5.1" />
-    <PackageReference Include="ReactiveUI.WPF" Version="19.5.1" />
-    <PackageReference Include="DynamicData" Version="9.1.1" />
+    <PackageReference Include="ReactiveUI.WPF" Version="21.0.1" />
+    <PackageReference Include="Splat" Version="17.1.1" />
   </ItemGroup>
 
 </Project>
