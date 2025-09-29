@@ -258,12 +258,6 @@ Console.WriteLine($"Scan Cycle ms -> Min:{cycle.MinimumCycleTime} Max:{cycle.Max
 ```
 
 ---
-## Direct Read/Write Core API Overview
-The internal `OmronPLCConnection` (used by the reactive layer) exposes low-level async methods: `ReadBitsAsync`, `ReadWordsAsync`, `WriteBitsAsync`, `WriteWordsAsync`, `ReadClockAsync`, `WriteClockAsync`, `ReadCycleTimeAsync`.
-
-Extend by adding new FINS request/response types under `Core/Requests` & `Core/Responses`.
-
----
 ## PLC Clock & Cycle Time
 Clock & cycle time can be read/written via public async methods:
 ```csharp
