@@ -58,7 +58,7 @@ internal static class ReadCycleTimeResponse
         return result;
     }
 
-    internal struct CycleTimeResult
+    internal record struct CycleTimeResult
     {
         internal double MinimumCycleTime;
         internal double MaximumCycleTime;

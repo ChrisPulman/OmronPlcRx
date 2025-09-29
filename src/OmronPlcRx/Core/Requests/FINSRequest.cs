@@ -14,10 +14,10 @@ internal abstract class FINSRequest
 
     protected FINSRequest(OmronPLCConnection plc)
     {
-        if (plc.Channel is TCPChannel)
+        if (plc.Channel is TCPChannel tCPChannel)
         {
-            LocalNodeID = (plc.Channel as TCPChannel).LocalNodeID;
-            RemoteNodeID = (plc.Channel as TCPChannel).RemoteNodeID;
+            LocalNodeID = tCPChannel.LocalNodeID;
+            RemoteNodeID = tCPChannel.RemoteNodeID;
         }
         else
         {

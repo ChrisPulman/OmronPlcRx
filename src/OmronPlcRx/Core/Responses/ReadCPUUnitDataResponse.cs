@@ -13,14 +13,13 @@ internal static class ReadCPUUnitDataResponse
     internal const int ControllerVersionLength = 20;
     internal const int SystemReservedLength = 40;
     internal const int AreaDataLength = 12;
+    internal const int TotalResponseLength = ControllerModelLength + ControllerVersionLength + SystemReservedLength + AreaDataLength;
 
     internal static CPUUnitDataResult ExtractData(FINSResponse response)
     {
-        var expectedLength = ControllerModelLength + ControllerVersionLength + SystemReservedLength + AreaDataLength;
-
-        if (response.Data?.Length < expectedLength)
+        if (response.Data?.Length < TotalResponseLength)
         {
-            throw new FINSException("The Response Data Length of '" + response.Data.Length.ToString() + "' was too short - Expecting a Length of '" + expectedLength.ToString() + "'");
+            throw new FINSException("The Response Data Length of '" + response.Data.Length.ToString() + "' was too short - Expecting a Length of '" + TotalResponseLength.ToString() + "'");
         }
 
         var data = response.Data;
@@ -55,7 +54,7 @@ internal static class ReadCPUUnitDataResponse
             return string.Empty;
         }
 
-        return ASCIIEncoding.ASCII.GetString([.. stringBytes]).Trim();
+        return Encoding.ASCII.GetString([.. stringBytes]).Trim();
     }
 
     private static byte[] SubArray(byte[]? data, int index, int length)
@@ -70,7 +69,7 @@ internal static class ReadCPUUnitDataResponse
         return result;
     }
 
-    internal struct CPUUnitDataResult
+    internal record struct CPUUnitDataResult
     {
         internal string ControllerModel;
         internal string ControllerVersion;

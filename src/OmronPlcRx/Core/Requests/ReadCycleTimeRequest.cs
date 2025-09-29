@@ -19,13 +19,5 @@ internal sealed class ReadCycleTimeRequest : FINSRequest
         SubFunctionCode = (byte)StatusFunctionCode.ReadCycleTime,
     };
 
-    protected override List<byte> BuildRequestData()
-    {
-        var data = new List<byte>();
-
-        // Read Cycle Time
-        data.Add(01);
-
-        return data;
-    }
+    protected override List<byte> BuildRequestData() => [01]; // Read Cycle Time
 }
