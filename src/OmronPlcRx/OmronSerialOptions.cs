@@ -56,6 +56,11 @@ public sealed record OmronSerialOptions
     public Handshake Handshake { get; init; } = Handshake.None;
 
     /// <summary>
+    /// Gets the serial FINS carrier protocol.
+    /// </summary>
+    public OmronSerialProtocol Protocol { get; init; } = OmronSerialProtocol.HostLinkFins;
+
+    /// <summary>
     /// Gets the Host Link unit number, 0 to 31.
     /// </summary>
     public byte HostLinkUnitNumber { get; init; }
@@ -69,6 +74,11 @@ public sealed record OmronSerialOptions
     /// Gets the Host Link FINS frame mode.
     /// </summary>
     public OmronHostLinkFinsFrameMode FrameMode { get; init; } = OmronHostLinkFinsFrameMode.Direct;
+
+    /// <summary>
+    /// Gets the maximum serial frame length in bytes, including terminator.
+    /// </summary>
+    public int MaximumFrameLength { get; init; } = 1004;
 
     /// <summary>
     /// Validates this options instance.
@@ -93,6 +103,11 @@ public sealed record OmronSerialOptions
         if (DataBits < 5 || DataBits > 8)
         {
             throw new ArgumentOutOfRangeException(nameof(DataBits), "The data bit count must be between 5 and 8.");
+        }
+
+        if (MaximumFrameLength <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(MaximumFrameLength), "The maximum frame length must be greater than zero.");
         }
     }
 }

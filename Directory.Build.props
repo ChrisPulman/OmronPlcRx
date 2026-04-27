@@ -14,8 +14,8 @@
     <Nullable>enable</Nullable>
     <PackageIcon>logo.png</PackageIcon>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageReleaseNotes>Compatability with .NET Framework 4.6.2 / 4.7.2 / 4.8.1 and Net 8 / 9 / 10; adds SerialPortRx-based Host Link FINS serial communications</PackageReleaseNotes>
-    <PackageTags>Omron;plc;rx;reactive;extensions;observable;LINQ;net;serial;hostlink;fins</PackageTags>
+    <PackageReleaseNotes>Compatability with .NET Framework 4.6.2 / 4.7.2 / 4.8.1 and Net 8 / 9 / 10; adds SerialPortRx-based Host Link FINS and Toolbus serial communications</PackageReleaseNotes>
+    <PackageTags>Omron;plc;rx;reactive;extensions;observable;LINQ;net;serial;hostlink;toolbus;fins</PackageTags>
     <EnableNETAnalyzers>True</EnableNETAnalyzers>
     <AnalysisLevel>latest</AnalysisLevel>
 

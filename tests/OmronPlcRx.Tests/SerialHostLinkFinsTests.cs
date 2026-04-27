@@ -33,6 +33,75 @@ public sealed class SerialHostLinkFinsTests
     }
 
     [Fact]
+    public void SerialOptions_DefaultFrameLengthMatchesCs1ToolbusConfiguration()
+    {
+        var options = new OmronSerialOptions("COM1");
+
+        Assert.Equal(1004, options.MaximumFrameLength);
+    }
+
+    [Fact]
+    public void SerialConnection_AllowsDirectCpuDestinationNodeZero()
+    {
+        using var plc = new OmronPlcRx(
+            localNodeId: 11,
+            remoteNodeId: 0,
+            serialOptions: new OmronSerialOptions("COM1"),
+            timeout: 2000,
+            retries: 0,
+            pollInterval: TimeSpan.FromSeconds(30));
+
+        Assert.False(plc.IsDisposed);
+    }
+
+    [Fact]
+    public void SerialOptions_CanSelectToolbusProtocol()
+    {
+        var options = new OmronSerialOptions("COM1")
+        {
+            Protocol = OmronSerialProtocol.Toolbus,
+            BaudRate = 115200,
+            DataBits = 8,
+            Parity = Parity.None,
+            StopBits = StopBits.One,
+        };
+
+        Assert.Equal(OmronSerialProtocol.Toolbus, options.Protocol);
+        Assert.Equal(1004, options.MaximumFrameLength);
+    }
+
+    [Fact]
+    public void ToolbusFinsFrameCodec_EncodesBinaryFinsRequestWithLengthAndChecksum()
+    {
+        var fins = Convert.FromHexString("800002000000000000050101");
+
+        var frame = ToolbusFinsFrameCodec.EncodeRequest(fins);
+
+        Assert.Equal("AB000E8000020000000000000501010142", Convert.ToHexString(frame.ToArray()));
+    }
+
+    [Fact]
+    public void ToolbusFinsFrameCodec_DecodesToolbusFrameToBinaryFinsResponse()
+    {
+        var payload = Convert.FromHexString("C0000200000000000005010100001234");
+        var frame = ToolbusFinsFrameCodec.EncodeRequest(payload);
+
+        var decoded = ToolbusFinsFrameCodec.DecodeResponse(frame);
+
+        Assert.Equal(payload, decoded.ToArray());
+    }
+
+    [Fact]
+    public void ToolbusFinsFrameCodec_RejectsInvalidChecksum()
+    {
+        var frame = Convert.FromHexString("AB000E8000020000000000000501010143");
+
+        var ex = Assert.Throws<OmronPLCException>(() => ToolbusFinsFrameCodec.DecodeResponse(frame));
+
+        Assert.Contains("checksum", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void HostLinkFcs_CalculatesXorAcrossFrameText()
     {
         var fcs = HostLinkFinsFrameCodec.CalculateFcs("@00FA0000000010101820064000002");

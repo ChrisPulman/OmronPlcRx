@@ -45,9 +45,9 @@ internal class OmronPLCConnection : IDisposable
 
         LocalNodeID = localNodeId;
 
-        if (remoteNodeId == 0)
+        if (connectionMethod != ConnectionMethod.Serial && remoteNodeId == 0)
         {
-            throw new ArgumentOutOfRangeException(nameof(remoteNodeId), "The Remote Node ID cannot be set to 0");
+            throw new ArgumentOutOfRangeException(nameof(remoteNodeId), "The Remote Node ID cannot be set to 0 for Ethernet FINS connections");
         }
 
         if (remoteNodeId == 255)

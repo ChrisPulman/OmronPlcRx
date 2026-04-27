@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.IO.Ports;
 using System.Reactive;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
@@ -27,6 +28,11 @@ public sealed class MainWindowViewModel : ReactiveObject, IDisposable
         _tags.Connect().Bind(out var ro).Subscribe().DisposeWith(_disposables);
         Tags = ro;
         ConnectionMethods = Enum.GetValues<ConnectionMethod>();
+        SerialProtocols = Enum.GetValues<PlcLib.OmronSerialProtocol>();
+        SerialParities = Enum.GetValues<Parity>();
+        SerialStopBits = Enum.GetValues<StopBits>();
+        SerialHandshakes = Enum.GetValues<Handshake>();
+        SerialFrameModes = Enum.GetValues<PlcLib.OmronHostLinkFinsFrameMode>();
         var canConnect = this.WhenAnyValue(v => v.IsConnected).Select(c => !c);
         var canDisconnect = this.WhenAnyValue(v => v.IsConnected);
         ConnectCommand = ReactiveCommand.CreateFromTask(ConnectAsync, canConnect);
@@ -37,6 +43,21 @@ public sealed class MainWindowViewModel : ReactiveObject, IDisposable
 
     /// <summary>Gets enum values for binding connection method.</summary>
     public Array ConnectionMethods { get; }
+
+    /// <summary>Gets serial protocol values for binding serial settings.</summary>
+    public Array SerialProtocols { get; }
+
+    /// <summary>Gets parity values for binding serial settings.</summary>
+    public Array SerialParities { get; }
+
+    /// <summary>Gets stop-bit values for binding serial settings.</summary>
+    public Array SerialStopBits { get; }
+
+    /// <summary>Gets handshake values for binding serial settings.</summary>
+    public Array SerialHandshakes { get; }
+
+    /// <summary>Gets Host Link FINS frame modes for binding serial settings.</summary>
+    public Array SerialFrameModes { get; }
 
     /// <summary>Gets connection settings.</summary>
     public ConnectionSettings Settings { get; } = new();
@@ -71,14 +92,18 @@ public sealed class MainWindowViewModel : ReactiveObject, IDisposable
         Disconnect();
         try
         {
-            _plc = new PlcLib.OmronPlcRx(Settings.LocalNodeId, Settings.RemoteNodeId, Settings.Method, Settings.Host, Settings.Port, Settings.Timeout, Settings.Retries, TimeSpan.FromMilliseconds(Settings.PollMs));
+            _plc = Settings.Method == ConnectionMethod.Serial
+                ? new PlcLib.OmronPlcRx(Settings.LocalNodeId, Settings.RemoteNodeId, Settings.ToSerialOptions(), Settings.Timeout, Settings.Retries, TimeSpan.FromMilliseconds(Settings.PollMs))
+                : new PlcLib.OmronPlcRx(Settings.LocalNodeId, Settings.RemoteNodeId, Settings.Method, Settings.Host, Settings.Port, Settings.Timeout, Settings.Retries, TimeSpan.FromMilliseconds(Settings.PollMs));
             _plc.Errors.Subscribe(e => Status = e?.Message ?? string.Empty).DisposeWith(_disposables);
             IsConnected = true;
             await Task.Delay(1000);
             PLCType = _plc.PLCType;
             ControllerModel = _plc.ControllerModel;
             ControllerVersion = _plc.ControllerVersion;
-            Status = "Connected";
+            Status = Settings.Method == ConnectionMethod.Serial
+                ? $"Connected via serial {Settings.SerialPortName} ({Settings.SerialProtocol})"
+                : "Connected";
         }
         catch (Exception ex)
         {

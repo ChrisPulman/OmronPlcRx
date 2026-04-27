@@ -155,7 +155,9 @@ plc.Observe<short>("LegacyValue")
 
 Serial notes:
 
-- The implementation uses `SerialPortRx` as the serial transport layer.
+- The dashboard exposes serial settings for port, baud rate, data bits, parity, stop bits, handshake, Host Link unit, response wait, frame mode, and maximum frame length.
+- For direct CPU FINS serial testing where the target is network `0`, node `0`, unit `0`, select `Serial` and set `Remote` to `0`; the default maximum frame length is `1004` bytes and the default timeout remains `2000` ms.
+- Dashboard serial mode currently targets the SerialPortRx Host Link FINS transport. Toolbus serial framing is a distinct protocol mode and should be implemented separately if the PLC port must remain configured for Toolbus.
 - `OmronHostLinkFinsFrameMode.Direct` emits the Host Link FINS direct CPU format: `@` + unit number + `FA` + response wait time + `ICF/DA2/SA2/SID` + command/text + FCS + `*\r`.
 - `OmronHostLinkFinsFrameMode.Network` is available for full-header Host Link FINS routing scenarios.
 - The PLC serial port must be configured for compatible Host Link settings: baud rate, parity, data bits, stop bits, handshake, and Host Link unit number.
