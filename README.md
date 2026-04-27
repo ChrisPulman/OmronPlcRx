@@ -1,8 +1,8 @@
-﻿# OmronPlcRx
+# OmronPlcRx
 
-A Reactive Omron PLC communications library for .NET (`netstandard2.0`, `net8.0`, `net9.0`, `net10.0`).
+A Reactive Omron PLC communications library for .NET (`net462`, `net472`, `net481`, `net8.0`, `net9.0`, `net10.0`).
 
-OmronPlcRx provides a high-level, reactive, strongly typed interface for interacting with Omron PLCs over the FINS protocol using TCP or UDP. It handles:
+OmronPlcRx provides a high-level, reactive, strongly typed interface for interacting with Omron PLCs over the FINS protocol using TCP, UDP, or serial Host Link FINS. It handles:
 
 - Connection setup & initialization (controller model / version discovery)
 - Bit and word memory area reads & writes
@@ -31,7 +31,7 @@ Contents:
 
 ---
 ## Features
-- TCP or UDP transport selection
+- TCP, UDP, or Serial Host Link FINS transport selection
 - Automatic controller identification (model, version, PLC type classification)
 - Reactive `IObservable<T>` streams per tag and an aggregate stream of all tag changes
 - Background polling loop with configurable interval (default 100 ms)
@@ -120,6 +120,46 @@ class Program
     }
 }
 ```
+
+### Serial Host Link FINS quick start
+
+Use serial Host Link FINS for PLCs such as CS/CJ/CP units configured for Host Link communications on RS-232C or RS-422A/485 serial ports.
+
+```csharp
+using System;
+using System.IO.Ports;
+using OmronPlcRx;
+
+var plc = new OmronPlcRx.OmronPlcRx(
+    localNodeId: 11,
+    remoteNodeId: 1,
+    serialOptions: new OmronSerialOptions("COM3")
+    {
+        BaudRate = 9600,
+        DataBits = 7,
+        Parity = Parity.Even,
+        StopBits = StopBits.Two,
+        Handshake = Handshake.None,
+        HostLinkUnitNumber = 0,
+        ResponseWaitTime = 0,
+        FrameMode = OmronHostLinkFinsFrameMode.Direct,
+    },
+    timeout: 2000,
+    retries: 1,
+    pollInterval: TimeSpan.FromMilliseconds(200));
+
+plc.AddUpdateTagItem<short>("D100", "LegacyValue");
+plc.Observe<short>("LegacyValue")
+   .Subscribe(value => Console.WriteLine($"D100 -> {value}"));
+```
+
+Serial notes:
+
+- The implementation uses `SerialPortRx` as the serial transport layer.
+- `OmronHostLinkFinsFrameMode.Direct` emits the Host Link FINS direct CPU format: `@` + unit number + `FA` + response wait time + `ICF/DA2/SA2/SID` + command/text + FCS + `*\r`.
+- `OmronHostLinkFinsFrameMode.Network` is available for full-header Host Link FINS routing scenarios.
+- The PLC serial port must be configured for compatible Host Link settings: baud rate, parity, data bits, stop bits, handshake, and Host Link unit number.
+- Classic C-mode Host Link commands are separate from this initial FINS-over-Host-Link transport and are not implemented in this first serial slice.
 
 ---
 ## Addressing Guide

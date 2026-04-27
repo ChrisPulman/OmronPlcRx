@@ -54,6 +54,27 @@ public sealed class OmronPlcRx : IOmronPlcRx
     }
 
     /// <summary>
+    /// Initializes a new instance of the <see cref="OmronPlcRx" /> class using serial Host Link FINS communications.
+    /// </summary>
+    /// <param name="localNodeId">The local node identifier.</param>
+    /// <param name="remoteNodeId">The remote node identifier.</param>
+    /// <param name="serialOptions">The serial Host Link FINS options.</param>
+    /// <param name="timeout">The timeout.</param>
+    /// <param name="retries">The retries.</param>
+    /// <param name="pollInterval">Polling interval (default 100 ms).</param>
+    public OmronPlcRx(byte localNodeId, byte remoteNodeId, OmronSerialOptions serialOptions, int timeout = 2000, int retries = 1, TimeSpan? pollInterval = null)
+    {
+        if (serialOptions == null)
+        {
+            throw new ArgumentNullException(nameof(serialOptions));
+        }
+
+        _plc = new(localNodeId, remoteNodeId, ConnectionMethod.Serial, serialOptions.PortName, 0, timeout, retries, serialOptions);
+        _pollInterval = pollInterval ?? TimeSpan.FromMilliseconds(100);
+        _pollLoop = Task.Run(PollLoopAsync);
+    }
+
+    /// <summary>
     /// Tag entry abstraction used internally for polymorphic read access.
     /// </summary>
     private interface ITagEntry

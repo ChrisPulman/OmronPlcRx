@@ -1,4 +1,4 @@
-﻿// Copyright (c) Chris Pulman. All rights reserved.
+// Copyright (c) Chris Pulman. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
 using System;
@@ -30,7 +30,8 @@ internal class OmronPLCConnection : IDisposable
     /// <param name="port">PLC service port.</param>
     /// <param name="timeout">Timeout in milliseconds for requests.</param>
     /// <param name="retries">Number of retries for transient failures.</param>
-    public OmronPLCConnection(byte localNodeId, byte remoteNodeId, ConnectionMethod connectionMethod, string remoteHost, int port = 9600, int timeout = 2000, int retries = 1)
+    /// <param name="serialOptions">Serial Host Link FINS options when <paramref name="connectionMethod"/> is <see cref="ConnectionMethod.Serial"/>.</param>
+    public OmronPLCConnection(byte localNodeId, byte remoteNodeId, ConnectionMethod connectionMethod, string remoteHost, int port = 9600, int timeout = 2000, int retries = 1, OmronSerialOptions? serialOptions = null)
     {
         if (localNodeId == 0)
         {
@@ -75,12 +76,12 @@ internal class OmronPLCConnection : IDisposable
 
         RemoteHost = remoteHost;
 
-        if (port <= 0)
+        if (connectionMethod != ConnectionMethod.Serial && port <= 0)
         {
             throw new ArgumentOutOfRangeException(nameof(port), "The Port cannot be less than 1");
         }
 
-        Port = port;
+        Port = connectionMethod == ConnectionMethod.Serial ? 0 : port;
 
         if (timeout <= 0)
         {
@@ -96,7 +97,12 @@ internal class OmronPLCConnection : IDisposable
 
         Retries = retries;
 
-        Channel = ConnectionMethod == ConnectionMethod.UDP ? new UDPChannel(RemoteHost, Port) : new TCPChannel(RemoteHost, Port);
+        Channel = ConnectionMethod switch
+        {
+            ConnectionMethod.Serial => new SerialHostLinkFinsChannel(serialOptions ?? new OmronSerialOptions(RemoteHost)),
+            ConnectionMethod.UDP => new UDPChannel(RemoteHost, Port),
+            _ => new TCPChannel(RemoteHost, Port),
+        };
     }
 
     /// <summary>

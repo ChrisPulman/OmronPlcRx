@@ -17,4 +17,9 @@ public enum ConnectionMethod
     /// User Datagram Protocol.
     /// </summary>
     UDP,
+
+    /// <summary>
+    /// Serial Host Link FINS protocol.
+    /// </summary>
+    Serial,
 }

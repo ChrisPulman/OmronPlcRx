@@ -1,11 +1,11 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>netstandard2.0;net8.0;net9.0;net10.0</TargetFrameworks>
+    <TargetFrameworks>net462;net472;net481;net8.0;net9.0;net10.0</TargetFrameworks>
     <LangVersion>preview</LangVersion>
   </PropertyGroup>
 
-  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
+  <ItemGroup Condition="'$(TargetFramework)' == 'net462' Or '$(TargetFramework)' == 'net472' Or '$(TargetFramework)' == 'net481'">
     <PackageReference Include="PolySharp" Version="1.15.0">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
@@ -14,6 +14,7 @@
   </ItemGroup>
   
   <ItemGroup>
+    <PackageReference Include="SerialPortRx" Version="3.4.4" />
     <PackageReference Include="System.Reactive" Version="6.1.0" />
   </ItemGroup>
 
