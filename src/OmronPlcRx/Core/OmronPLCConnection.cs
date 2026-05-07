@@ -30,7 +30,7 @@ internal class OmronPLCConnection : IDisposable
     /// <param name="port">PLC service port.</param>
     /// <param name="timeout">Timeout in milliseconds for requests.</param>
     /// <param name="retries">Number of retries for transient failures.</param>
-    /// <param name="serialOptions">Serial Host Link FINS options when <paramref name="connectionMethod"/> is <see cref="ConnectionMethod.Serial"/>.</param>
+    /// <param name="serialOptions">Serial FINS options when <paramref name="connectionMethod"/> is <see cref="ConnectionMethod.Serial"/>.</param>
     public OmronPLCConnection(byte localNodeId, byte remoteNodeId, ConnectionMethod connectionMethod, string remoteHost, int port = 9600, int timeout = 2000, int retries = 1, OmronSerialOptions? serialOptions = null)
     {
         if (localNodeId == 0)

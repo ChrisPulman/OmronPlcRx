@@ -54,11 +54,11 @@ public sealed class OmronPlcRx : IOmronPlcRx
     }
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="OmronPlcRx" /> class using serial Host Link FINS communications.
+    /// Initializes a new instance of the <see cref="OmronPlcRx" /> class using serial FINS communications.
     /// </summary>
     /// <param name="localNodeId">The local node identifier.</param>
     /// <param name="remoteNodeId">The remote node identifier.</param>
-    /// <param name="serialOptions">The serial Host Link FINS options.</param>
+    /// <param name="serialOptions">The serial FINS options.</param>
     /// <param name="timeout">The timeout.</param>
     /// <param name="retries">The retries.</param>
     /// <param name="pollInterval">Polling interval (default 100 ms).</param>

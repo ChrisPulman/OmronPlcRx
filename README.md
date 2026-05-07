@@ -2,7 +2,7 @@
 
 A Reactive Omron PLC communications library for .NET (`net462`, `net472`, `net481`, `net8.0`, `net9.0`, `net10.0`).
 
-OmronPlcRx provides a high-level, reactive, strongly typed interface for interacting with Omron PLCs over the FINS protocol using TCP, UDP, or serial Host Link FINS. It handles:
+OmronPlcRx provides a high-level, reactive, strongly typed interface for interacting with Omron PLCs over the FINS protocol using TCP, UDP, serial Host Link FINS, or serial Toolbus FINS. It handles:
 
 - Connection setup & initialization (controller model / version discovery)
 - Bit and word memory area reads & writes
@@ -31,7 +31,7 @@ Contents:
 
 ---
 ## Features
-- TCP, UDP, or Serial Host Link FINS transport selection
+- TCP, UDP, Serial Host Link FINS, or Serial Toolbus FINS transport selection
 - Automatic controller identification (model, version, PLC type classification)
 - Reactive `IObservable<T>` streams per tag and an aggregate stream of all tag changes
 - Background polling loop with configurable interval (default 100 ms)
@@ -121,7 +121,7 @@ class Program
 }
 ```
 
-### Serial Host Link FINS quick start
+### Serial FINS quick start
 
 Use serial Host Link FINS for PLCs such as CS/CJ/CP units configured for Host Link communications on RS-232C or RS-422A/485 serial ports.
 
@@ -132,7 +132,7 @@ using OmronPlcRx;
 
 var plc = new OmronPlcRx.OmronPlcRx(
     localNodeId: 11,
-    remoteNodeId: 1,
+    remoteNodeId: 0,
     serialOptions: new OmronSerialOptions("COM3")
     {
         BaudRate = 9600,
@@ -153,15 +153,35 @@ plc.Observe<short>("LegacyValue")
    .Subscribe(value => Console.WriteLine($"D100 -> {value}"));
 ```
 
+Use Toolbus when the PLC serial port is configured for Omron Toolbus. `CreateToolbus` applies the common `115200 8N1` Toolbus settings.
+
+```csharp
+using System;
+using OmronPlcRx;
+
+var plc = new OmronPlcRx.OmronPlcRx(
+    localNodeId: 11,
+    remoteNodeId: 0,
+    serialOptions: OmronSerialOptions.CreateToolbus("COM3"),
+    timeout: 2000,
+    retries: 1,
+    pollInterval: TimeSpan.FromMilliseconds(200));
+
+plc.AddUpdateTagItem<short>("D100", "ToolbusValue");
+plc.Observe<short>("ToolbusValue")
+   .Subscribe(value => Console.WriteLine($"D100 -> {value}"));
+```
+
 Serial notes:
 
-- The dashboard exposes serial settings for port, baud rate, data bits, parity, stop bits, handshake, Host Link unit, response wait, frame mode, and maximum frame length.
+- The dashboard exposes serial settings for port, protocol, baud rate, data bits, parity, stop bits, handshake, Host Link unit, response wait, frame mode, and maximum frame length.
 - For direct CPU FINS serial testing where the target is network `0`, node `0`, unit `0`, select `Serial` and set `Remote` to `0`; the default maximum frame length is `1004` bytes and the default timeout remains `2000` ms.
-- Dashboard serial mode currently targets the SerialPortRx Host Link FINS transport. Toolbus serial framing is a distinct protocol mode and should be implemented separately if the PLC port must remain configured for Toolbus.
+- Select Toolbus in the dashboard to apply the common `115200 8N1` settings, no handshake, remote node `0`, and maximum frame length `1004`.
+- Toolbus performs an `AC 01` synchronization before normal traffic, then carries binary FINS messages in `0xAB` frames with a two-byte length and 16-bit additive checksum.
 - `OmronHostLinkFinsFrameMode.Direct` emits the Host Link FINS direct CPU format: `@` + unit number + `FA` + response wait time + `ICF/DA2/SA2/SID` + command/text + FCS + `*\r`.
 - `OmronHostLinkFinsFrameMode.Network` is available for full-header Host Link FINS routing scenarios.
-- The PLC serial port must be configured for compatible Host Link settings: baud rate, parity, data bits, stop bits, handshake, and Host Link unit number.
-- Classic C-mode Host Link commands are separate from this initial FINS-over-Host-Link transport and are not implemented in this first serial slice.
+- For Host Link FINS, the PLC serial port must be configured for compatible baud rate, parity, data bits, stop bits, handshake, and Host Link unit number.
+- Classic C-mode Host Link commands remain separate from these FINS serial transports and are not implemented.
 
 ---
 ## Addressing Guide

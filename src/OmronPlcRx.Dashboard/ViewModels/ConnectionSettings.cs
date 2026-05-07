@@ -86,6 +86,8 @@ public sealed class ConnectionSettings : ReactiveObject
                 RemoteNodeId = 0;
                 MaximumFrameLength = 1004;
             }
+
+            this.RaisePropertyChanged(nameof(IsHostLinkFins));
         }
     }
 
@@ -99,6 +101,7 @@ public sealed class ConnectionSettings : ReactiveObject
     public OmronHostLinkFinsFrameMode FrameMode { get => _frameMode; set => this.RaiseAndSetIfChanged(ref _frameMode, value); }
     public int MaximumFrameLength { get => _maximumFrameLength; set => this.RaiseAndSetIfChanged(ref _maximumFrameLength, value); }
     public bool IsSerial => Method == ConnectionMethod.Serial;
+    public bool IsHostLinkFins => SerialProtocol == OmronSerialProtocol.HostLinkFins;
 
     public OmronSerialOptions ToSerialOptions() => new(SerialPortName)
     {

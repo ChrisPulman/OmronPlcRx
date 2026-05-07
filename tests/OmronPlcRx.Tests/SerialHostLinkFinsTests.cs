@@ -27,6 +27,7 @@ public sealed class SerialHostLinkFinsTests
         Assert.Equal(Parity.Even, options.Parity);
         Assert.Equal(StopBits.Two, options.StopBits);
         Assert.Equal(Handshake.None, options.Handshake);
+        Assert.Equal(OmronSerialProtocol.HostLinkFins, options.Protocol);
         Assert.Equal(0, options.HostLinkUnitNumber);
         Assert.Equal(0, options.ResponseWaitTime);
         Assert.Equal(OmronHostLinkFinsFrameMode.Direct, options.FrameMode);
@@ -71,6 +72,47 @@ public sealed class SerialHostLinkFinsTests
     }
 
     [Fact]
+    public void SerialOptions_CreateToolbusUsesCommonToolbusSettings()
+    {
+        var options = OmronSerialOptions.CreateToolbus("COM1");
+
+        Assert.Equal("COM1", options.PortName);
+        Assert.Equal(OmronSerialProtocol.Toolbus, options.Protocol);
+        Assert.Equal(115200, options.BaudRate);
+        Assert.Equal(8, options.DataBits);
+        Assert.Equal(Parity.None, options.Parity);
+        Assert.Equal(StopBits.One, options.StopBits);
+        Assert.Equal(Handshake.None, options.Handshake);
+        Assert.Equal(1004, options.MaximumFrameLength);
+    }
+
+    [Fact]
+    public void SerialOptions_ValidateIgnoresHostLinkOnlyValuesForToolbus()
+    {
+        var options = OmronSerialOptions.CreateToolbus("COM1") with
+        {
+            HostLinkUnitNumber = 255,
+            ResponseWaitTime = 255,
+        };
+
+        options.Validate();
+    }
+
+    [Fact]
+    public void ToolbusFinsFrameCodec_ExposesSynchronizationFrame()
+    {
+        Assert.Equal("AC01", Convert.ToHexString(ToolbusFinsFrameCodec.SynchronizationFrame.ToArray()));
+    }
+
+    [Fact]
+    public void ToolbusFinsFrameCodec_RejectsTooShortFinsRequest()
+    {
+        var fins = new byte[11];
+
+        Assert.Throws<ArgumentException>(() => ToolbusFinsFrameCodec.EncodeRequest(fins));
+    }
+
+    [Fact]
     public void ToolbusFinsFrameCodec_EncodesBinaryFinsRequestWithLengthAndChecksum()
     {
         var fins = Convert.FromHexString("800002000000000000050101");
@@ -78,6 +120,26 @@ public sealed class SerialHostLinkFinsTests
         var frame = ToolbusFinsFrameCodec.EncodeRequest(fins);
 
         Assert.Equal("AB000E8000020000000000000501010142", Convert.ToHexString(frame.ToArray()));
+    }
+
+    [Fact]
+    public void ToolbusFinsFrameCodec_EncodesMaximumLengthRequestAcceptedByLengthField()
+    {
+        var fins = new byte[ushort.MaxValue - 2];
+
+        var frame = ToolbusFinsFrameCodec.EncodeRequest(fins);
+
+        Assert.Equal(ushort.MaxValue + 3, frame.Length);
+        Assert.Equal("ABFFFF", Convert.ToHexString(frame.Span[..3]));
+        Assert.Equal("02A9", Convert.ToHexString(frame.Span[^2..]));
+    }
+
+    [Fact]
+    public void ToolbusFinsFrameCodec_RejectsRequestLongerThanLengthFieldAllows()
+    {
+        var fins = new byte[ushort.MaxValue - 1];
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => ToolbusFinsFrameCodec.EncodeRequest(fins));
     }
 
     [Fact]
@@ -92,6 +154,56 @@ public sealed class SerialHostLinkFinsTests
     }
 
     [Fact]
+    public void ToolbusFinsFrameCodec_RejectsInvalidStartByte()
+    {
+        var frame = Convert.FromHexString("AA000E8000020000000000000501010142");
+
+        var ex = Assert.Throws<OmronPLCException>(() => ToolbusFinsFrameCodec.DecodeResponse(frame));
+
+        Assert.Contains("0xAB", ex.Message);
+    }
+
+    [Fact]
+    public void ToolbusFinsFrameCodec_RejectsDeclaredLengthMismatch()
+    {
+        var frame = Convert.FromHexString("AB000D8000020000000000000501010142");
+
+        var ex = Assert.Throws<OmronPLCException>(() => ToolbusFinsFrameCodec.DecodeResponse(frame));
+
+        Assert.Contains("declared length", ex.Message);
+    }
+
+    [Fact]
+    public void ToolbusFinsFrameCodec_RejectsTooSmallDeclaredLength()
+    {
+        var frame = Convert.FromHexString("AB00010142");
+
+        var ex = Assert.Throws<OmronPLCException>(() => ToolbusFinsFrameCodec.DecodeResponse(frame));
+
+        Assert.Contains("length", ex.Message);
+    }
+
+    [Fact]
+    public void ToolbusFinsFrameCodec_RejectsTooShortFinsResponsePayload()
+    {
+        var frame = ToolbusFinsFrameCodec.EncodeRequest(Convert.FromHexString("C00002000000000000050101"));
+
+        var ex = Assert.Throws<OmronPLCException>(() => ToolbusFinsFrameCodec.DecodeResponse(frame));
+
+        Assert.Contains("payload", ex.Message);
+    }
+
+    [Fact]
+    public void ToolbusFinsFrameCodec_RejectsInvalidFinsResponseHeader()
+    {
+        var frame = ToolbusFinsFrameCodec.EncodeRequest(Convert.FromHexString("8000020000000000000501010000"));
+
+        var ex = Assert.Throws<OmronPLCException>(() => ToolbusFinsFrameCodec.DecodeResponse(frame));
+
+        Assert.Contains("FINS header", ex.Message);
+    }
+
+    [Fact]
     public void ToolbusFinsFrameCodec_RejectsInvalidChecksum()
     {
         var frame = Convert.FromHexString("AB000E8000020000000000000501010143");
@@ -99,6 +211,17 @@ public sealed class SerialHostLinkFinsTests
         var ex = Assert.Throws<OmronPLCException>(() => ToolbusFinsFrameCodec.DecodeResponse(frame));
 
         Assert.Contains("checksum", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void ToolbusFinsFrameCodec_CalculatesChecksumWithSixteenBitWraparound()
+    {
+        var data = new byte[258];
+        Array.Fill(data, (byte)0xFF);
+
+        var checksum = ToolbusFinsFrameCodec.CalculateChecksum(data);
+
+        Assert.Equal((ushort)0x00FE, checksum);
     }
 
     [Fact]

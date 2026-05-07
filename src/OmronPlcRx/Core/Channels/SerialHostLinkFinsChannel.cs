@@ -249,6 +249,7 @@ internal sealed class SerialHostLinkFinsChannel : BaseChannel
         }
 
         ClearReceiveQueue();
+        _port.DiscardInBuffer();
         var sync = ToolbusFinsFrameCodec.SynchronizationFrame.ToArray();
         var received = new List<byte>();
         var startTimestamp = DateTime.UtcNow;
@@ -322,6 +323,10 @@ internal sealed class SerialHostLinkFinsChannel : BaseChannel
     private void ClearReceiveQueue()
     {
         while (_receivedBytes.TryDequeue(out _))
+        {
+        }
+
+        while (_receivedSignal.Wait(0))
         {
         }
     }

@@ -19,7 +19,7 @@ public enum ConnectionMethod
     UDP,
 
     /// <summary>
-    /// Serial Host Link FINS protocol.
+    /// Serial FINS protocol using Host Link FINS or Toolbus framing.
     /// </summary>
     Serial,
 }

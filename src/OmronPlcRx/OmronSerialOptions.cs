@@ -7,7 +7,7 @@ using System.IO.Ports;
 namespace OmronPlcRx;
 
 /// <summary>
-/// Serial Host Link FINS connection settings.
+/// Serial FINS connection settings for Host Link FINS or Toolbus framing.
 /// </summary>
 public sealed record OmronSerialOptions
 {
@@ -81,16 +81,37 @@ public sealed record OmronSerialOptions
     public int MaximumFrameLength { get; init; } = 1004;
 
     /// <summary>
+    /// Creates Toolbus serial options using common Omron Toolbus port settings.
+    /// </summary>
+    /// <param name="portName">Serial port name, e.g. COM1 or /dev/ttyUSB0.</param>
+    /// <returns>Serial options configured for Toolbus FINS framing.</returns>
+    public static OmronSerialOptions CreateToolbus(string portName) => new(portName)
+    {
+        Protocol = OmronSerialProtocol.Toolbus,
+        BaudRate = 115200,
+        DataBits = 8,
+        Parity = Parity.None,
+        StopBits = StopBits.One,
+        Handshake = Handshake.None,
+        MaximumFrameLength = 1004,
+    };
+
+    /// <summary>
     /// Validates this options instance.
     /// </summary>
     public void Validate()
     {
-        if (HostLinkUnitNumber > 31)
+        if (!Enum.IsDefined(typeof(OmronSerialProtocol), Protocol))
+        {
+            throw new ArgumentOutOfRangeException(nameof(Protocol), "The serial protocol is invalid.");
+        }
+
+        if (Protocol == OmronSerialProtocol.HostLinkFins && HostLinkUnitNumber > 31)
         {
             throw new ArgumentOutOfRangeException(nameof(HostLinkUnitNumber), "The Host Link unit number must be between 0 and 31.");
         }
 
-        if (ResponseWaitTime > 0x0F)
+        if (Protocol == OmronSerialProtocol.HostLinkFins && ResponseWaitTime > 0x0F)
         {
             throw new ArgumentOutOfRangeException(nameof(ResponseWaitTime), "The response wait time must be between 0 and 15.");
         }

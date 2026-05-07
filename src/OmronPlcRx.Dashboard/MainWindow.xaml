@@ -224,28 +224,34 @@
                     Grid.Row="3"
                     Grid.Column="3"
                     VerticalAlignment="Center"
+                    IsEnabled="{Binding Settings.IsHostLinkFins}"
                     Text="HL unit" />
                 <TextBox
                     Grid.Row="3"
                     Grid.Column="4"
+                    IsEnabled="{Binding Settings.IsHostLinkFins}"
                     Text="{Binding Settings.HostLinkUnitNumber, UpdateSourceTrigger=PropertyChanged}" />
                 <TextBlock
                     Grid.Row="3"
                     Grid.Column="6"
                     VerticalAlignment="Center"
+                    IsEnabled="{Binding Settings.IsHostLinkFins}"
                     Text="Resp wait" />
                 <TextBox
                     Grid.Row="3"
                     Grid.Column="7"
+                    IsEnabled="{Binding Settings.IsHostLinkFins}"
                     Text="{Binding Settings.ResponseWaitTime, UpdateSourceTrigger=PropertyChanged}" />
                 <TextBlock
                     Grid.Row="3"
                     Grid.Column="9"
                     VerticalAlignment="Center"
+                    IsEnabled="{Binding Settings.IsHostLinkFins}"
                     Text="Frame mode" />
                 <ComboBox
                     Grid.Row="3"
                     Grid.Column="10"
+                    IsEnabled="{Binding Settings.IsHostLinkFins}"
                     ItemsSource="{Binding SerialFrameModes}"
                     SelectedItem="{Binding Settings.FrameMode}" />
                 <TextBlock

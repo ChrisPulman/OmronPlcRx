@@ -10,6 +10,9 @@ namespace OmronPlcRx;
 /// </summary>
 public static class ToolbusFinsFrameCodec
 {
+    private const int MinimumFinsRequestLength = 12;
+    private const int MinimumFinsResponseLength = 14;
+
     /// <summary>
     /// Gets the Toolbus synchronization frame exchanged before normal 0xAB frames.
     /// </summary>
@@ -22,9 +25,9 @@ public static class ToolbusFinsFrameCodec
     /// <returns>Toolbus frame: 0xAB + length + FINS payload + checksum.</returns>
     public static Memory<byte> EncodeRequest(ReadOnlyMemory<byte> finsMessage)
     {
-        if (finsMessage.Length == 0)
+        if (finsMessage.Length < MinimumFinsRequestLength)
         {
-            throw new ArgumentException("The FINS message cannot be empty.", nameof(finsMessage));
+            throw new ArgumentException("The FINS request is too short.", nameof(finsMessage));
         }
 
         if (finsMessage.Length > ushort.MaxValue - 2)
@@ -81,6 +84,16 @@ public static class ToolbusFinsFrameCodec
         }
 
         var payloadLength = declaredLength - 2;
+        if (payloadLength < MinimumFinsResponseLength)
+        {
+            throw new OmronPLCException("The Toolbus response FINS payload was too short.");
+        }
+
+        if (span[3] != 0xC0 && span[3] != 0xC1)
+        {
+            throw new OmronPLCException("The Toolbus response FINS header was invalid.");
+        }
+
         var payload = new byte[payloadLength];
         span.Slice(3, payloadLength).CopyTo(payload);
         return payload;
