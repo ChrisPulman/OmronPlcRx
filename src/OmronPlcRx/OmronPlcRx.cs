@@ -573,6 +573,18 @@ public sealed class OmronPlcRx : IOmronPlcRx
             short[] words = [unchecked((short)wLow2), unchecked((short)wLow3), unchecked((short)wHigh0), unchecked((short)wHigh1)];
             await _plc.WriteWordsAsync(words, addr2, ToWordType(area2), ct).ConfigureAwait(false);
         }
+        else if (typeof(T) == typeof(Bcd16))
+        {
+            var numeric = ((Bcd16)(object)value).Value;
+            var word = BCDConverter.GetBCDWord(numeric);
+            await _plc.WriteWordsAsync([word], addr2, ToWordType(area2), ct).ConfigureAwait(false);
+        }
+        else if (typeof(T) == typeof(BcdU16))
+        {
+            var numeric = ((BcdU16)(object)value).Value;
+            var word = BCDConverter.GetBCDWord(numeric);
+            await _plc.WriteWordsAsync([word], addr2, ToWordType(area2), ct).ConfigureAwait(false);
+        }
         else if (typeof(T) == typeof(Bcd32))
         {
             var numeric = ((Bcd32)(object)value).Value;
@@ -722,6 +734,18 @@ public sealed class OmronPlcRx : IOmronPlcRx
                 }
 
                 newVal = BitConverter.ToDouble(bytes, 0);
+            }
+            else if (typeof(T) == typeof(Bcd16))
+            {
+                var words = await plc.ReadWordsAsync(addr2, 1, ToWordType(area2), ct).ConfigureAwait(false);
+                var val = BCDConverter.ToInt16(words.Values[0]);
+                newVal = new Bcd16(val);
+            }
+            else if (typeof(T) == typeof(BcdU16))
+            {
+                var words = await plc.ReadWordsAsync(addr2, 1, ToWordType(area2), ct).ConfigureAwait(false);
+                var val = BCDConverter.ToUInt16(words.Values[0]);
+                newVal = new BcdU16(val);
             }
             else if (typeof(T) == typeof(Bcd32))
             {

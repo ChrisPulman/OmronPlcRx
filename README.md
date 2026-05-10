@@ -20,11 +20,14 @@ Contents:
 - Supported Types & Encoding
 - BCD Types
 - Reactive Tag & System API
+- ReactiveUI.Extensions Async Observables
+- Source Generated Reactive Streams
 - Code Samples
 - Direct Read/Write Core API Overview
 - PLC Clock & Cycle Time
 - Error Handling
 - PLC Types & Limits
+- Testing
 - FAQ
 - Contributing
 - License / Disclaimer
@@ -34,6 +37,8 @@ Contents:
 - TCP, UDP, Serial Host Link FINS, or Serial Toolbus FINS transport selection
 - Automatic controller identification (model, version, PLC type classification)
 - Reactive `IObservable<T>` streams per tag and an aggregate stream of all tag changes
+- ReactiveUI.Extensions `IObservableAsync<T>` adapters on `net8.0+`
+- Source generator support for strongly typed PLC tag properties and observable streams
 - Background polling loop with configurable interval (default 100 ms)
 - Safe concurrent access with internal caching
 - Strong typing for tag values; built-in conversion for common primitives & BCD wrappers
@@ -231,7 +236,7 @@ Example:
 ```csharp
 plc.AddUpdateTagItem<Bcd32>("D800", "BatchNumber");
 plc.Observe<Bcd32>("BatchNumber")
-   .Subscribe(v => Console.WriteLine($"BatchNumber -> {v?.Value}"));
+   .Subscribe(v => Console.WriteLine($"BatchNumber -> {v.Value}"));
 plc.Value("BatchNumber", new Bcd32(12345678));
 ```
 
@@ -249,6 +254,78 @@ Methods / Properties:
 - Clock / cycle time: `ReadClockAsync()`, `WriteClockAsync(DateTime)`, `WriteClockAsync(DateTime,int)`, `ReadCycleTimeAsync()`
 
 Clock/cycle methods return strongly typed result structs (Bytes/Packets sent/received, Duration and payload data).
+
+---
+## ReactiveUI.Extensions Async Observables
+`net8.0`, `net9.0`, and `net10.0` builds include adapters for the ReactiveUI.Extensions async observable API.
+
+```csharp
+using OmronPlcRx.Async;
+using ReactiveUI.Extensions.Async;
+
+plc.AddUpdateTagItem<bool>("D100.0", "MotorRun");
+
+var nextMotorRun = await plc.ObserveAsync<bool>("MotorRun")
+    .DistinctUntilChanged()
+    .FirstAsync(cancellationToken);
+
+await foreach (var value in plc.ObserveValuesAsync<bool>("MotorRun", cancellationToken))
+{
+    Console.WriteLine($"MotorRun -> {value}");
+}
+```
+
+Available adapters:
+
+- `ObserveAsync<T>(tagName)` converts a typed tag stream to `IObservableAsync<T?>`.
+- `ObserveAllAsync()` converts the aggregate tag stream to `IObservableAsync<IPlcTag?>`.
+- `ErrorsAsync()` converts the operational error stream to `IObservableAsync<OmronPLCException?>`.
+- `ObserveValuesAsync<T>(tagName, cancellationToken)` exposes a tag stream as `IAsyncEnumerable<T?>`.
+
+The async surface bridges the existing polling loop, so current `IObservable<T>` behavior remains unchanged for all target frameworks.
+
+---
+## Source Generated Reactive Streams
+Annotate fields in a partial class with `[PlcTag]` to generate registration, binding, properties, and observable streams.
+
+```csharp
+using OmronPlcRx;
+
+public sealed partial class MachineTags
+{
+    [PlcTag("D100.0", Writable = true)]
+    private bool _motorRun;
+
+    [PlcTag("D200")]
+    private short _temperatureRaw;
+
+    [PlcTag("D600[20]")]
+    private string? _lineName;
+}
+```
+
+Generated members include:
+
+- `MotorRun`, `TemperatureRaw`, and `LineName` properties.
+- `MotorRunObservable`, `TemperatureRawObservable`, and `LineNameObservable`.
+- `MotorRunObservableAsync` and matching async observables on `net8.0+`.
+- `RegisterPlcTags(IOmronPlcRx plc)`.
+- `BindPlcTags(IOmronPlcRx plc)`, which registers tags and updates properties when PLC data arrives.
+- `WriteMotorRun(IOmronPlcRx plc, bool value)` for tags marked `Writable = true`.
+- Partial hooks such as `partial void OnMotorRunReceived(bool value);`.
+
+Usage:
+
+```csharp
+var tags = new MachineTags();
+using var binding = tags.BindPlcTags(plc);
+using var subscription = tags.TemperatureRawObservable
+    .Subscribe(value => Console.WriteLine($"Raw temperature -> {value}"));
+
+tags.WriteMotorRun(plc, true);
+```
+
+Generated streams use the same supported tag types as the runtime: `bool`, `byte`, `short`, `ushort`, `int`, `uint`, `float`, `double`, `string`, `Bcd16`, `BcdU16`, `Bcd32`, and `BcdU32`.
 
 ---
 ## Code Samples
@@ -278,7 +355,7 @@ plc.Observe<uint>("PulseCounter")
 plc.AddUpdateTagItem<Bcd32>("D500", "ProdCount");
 plc.Observe<Bcd32>("ProdCount")
    .DistinctUntilChanged()
-   .Subscribe(v => Console.WriteLine($"Production Count = {v?.Value}"));
+   .Subscribe(v => Console.WriteLine($"Production Count = {v.Value}"));
 ```
 
 4. Double precision accumulation
@@ -342,6 +419,14 @@ Write errors also surface here because `Value<T>(...)` is fire-and-forget.
 Controller type is inferred automatically. Impacts maximum read/write word lengths & area availability.
 
 `PLCType` enum includes: `CP1`, `CJ2`, `NJ101`, `NJ301`, `NJ501`, `NX1P2`, `NX102`, `NX701`, `NY512`, `NY532`, `NJ_NX_NY_Series`, `C_Series`, `Unknown`.
+
+---
+## Testing
+The test suite uses TUnit on Microsoft.Testing.Platform.
+
+```bash
+dotnet test tests/OmronPlcRx.Tests/OmronPlcRx.Tests.csproj --framework net10.0
+```
 
 ---
 ## FAQ
