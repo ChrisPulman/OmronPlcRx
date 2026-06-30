@@ -1,18 +1,19 @@
-// Copyright (c) Chris Pulman. All rights reserved.
-// Licensed under the MIT license. See LICENSE file in the project root for full license information.
+// Copyright (c) 2022-2026 Chris Pulman. All rights reserved.
+// Chris Pulman licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for full license information.
 
 using System;
 
 namespace OmronPlcRx.Tags;
 
-/// <summary>PlcTag.</summary>
+/// <summary>Represents a typed PLC tag binding.</summary>
 /// <typeparam name="T">The data type.</typeparam>
-/// <remarks>
-/// Initializes a new instance of the <see cref="PlcTag{T}"/> class.
-/// </remarks>
 /// <param name="tagName">The tag Name.</param>
 /// <param name="address">The address.</param>
 /// <exception cref="ArgumentNullException">
+/// <remarks>
+/// Initializes a new instance of the <see cref="PlcTag{T}"/> class.
+/// </remarks>
 /// name
 /// or
 /// address.
@@ -31,7 +32,7 @@ public class PlcTag<T>(string tagName, string address) : IPlcTag
     /// </value>
     public string Address { get; } = address ?? throw new ArgumentNullException(nameof(address));
 
-    /// <summary>Gets the value read.</summary>
+    /// <summary>Gets the tag value.</summary>
     /// <value>
     /// The value.
     /// </value>

@@ -1,5 +1,6 @@
-// Copyright (c) Chris Pulman. All rights reserved.
-// Licensed under the MIT license. See LICENSE file in the project root for full license information.
+// Copyright (c) 2022-2026 Chris Pulman. All rights reserved.
+// Chris Pulman licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for full license information.
 
 using System;
 using System.Collections.Concurrent;
@@ -24,24 +25,34 @@ namespace OmronPlcRx;
 /// </summary>
 public sealed class OmronPlcRx : IOmronPlcRx
 {
+    /// <summary>Stores the p lc value.</summary>
     private readonly OmronPLCConnection _plc;
 
+    /// <summary>Stores the p ol li nt er va l value.</summary>
     private readonly TimeSpan _pollInterval;
 
+    /// <summary>Executes the e nt ri es operation.</summary>
     private readonly ConcurrentDictionary<string, ITagEntry> _entries = new(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>Executes the s ub je ct s operation.</summary>
     private readonly ConcurrentDictionary<string, BehaviorSignal<object?>> _subjects = new(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>Executes the t ag ch an ge d operation.</summary>
     private readonly Signal<IPlcTag?> _tagChanged = new();
 
+    /// <summary>Executes the e rr or s operation.</summary>
     private readonly Signal<OmronPLCException?> _errors = new();
 
+    /// <summary>Executes the c ts operation.</summary>
     private readonly CancellationTokenSource _cts = new();
 
+    /// <summary>Stores the p ol ll oo p value.</summary>
     private readonly Task _pollLoop;
 
+    /// <summary>Stores the d is po se d value.</summary>
     private bool _disposed;
 
+    /// <summary>Stores the p lc in it ia li ze d value.</summary>
     private volatile bool _plcInitialized;
 
     /// <summary>Initializes a new instance of the <see cref="OmronPlcRx" /> class.</summary>
@@ -101,16 +112,16 @@ public sealed class OmronPlcRx : IOmronPlcRx
     /// <inheritdoc />
     public bool IsDisposed => _disposed;
 
-    /// <summary>Gets the type of the PLC.</summary>
+    /// <summary>Gets the plc type value.</summary>
     /// <value>
     /// The type of the PLC.
     /// </value>
     public PLCType PLCType => _plc.PLCType;
 
-    /// <summary>Gets the PLC controller model string.</summary>
+    /// <summary>Gets the controller model value.</summary>
     public string? ControllerModel => _plc.ControllerModel;
 
-    /// <summary>Gets the PLC controller version string.</summary>
+    /// <summary>Gets the controller version value.</summary>
     public string? ControllerVersion => _plc.ControllerVersion;
 
     /// <summary>Reads the PLC real-time clock via the underlying connection.</summary>
@@ -137,17 +148,13 @@ public sealed class OmronPlcRx : IOmronPlcRx
     public Task<ReadCycleTimeResult> ReadCycleTimeAsync(CancellationToken cancellationToken = default) => _plc.ReadCycleTimeAsync(cancellationToken);
 
     /// <inheritdoc />
+        /// <typeparam name="T">The t value type.</typeparam>
+        /// <param name="variable">The variable value.</param>
+        /// <param name="tagName">The tag name value.</param>
     public void AddUpdateTagItem<T>(string variable, string tagName)
     {
-        if (string.IsNullOrWhiteSpace(variable))
-        {
-            throw new ArgumentNullException(nameof(variable));
-        }
-
-        if (string.IsNullOrWhiteSpace(tagName))
-        {
-            throw new ArgumentNullException(nameof(tagName));
-        }
+        ThrowIfNullOrWhiteSpace(variable, nameof(variable));
+        ThrowIfNullOrWhiteSpace(tagName, nameof(tagName));
 
         var tag = new PlcTag<T>(tagName, variable);
         var entry = new TagEntry<T>(tag);
@@ -156,6 +163,8 @@ public sealed class OmronPlcRx : IOmronPlcRx
     }
 
     /// <inheritdoc />
+        /// <typeparam name="T">The t value type.</typeparam>
+        /// <param name="tagName">The tag name value.</param>
     public IObservable<T?> Observe<T>(string? tagName)
     {
         if (tagName is null)
@@ -168,6 +177,8 @@ public sealed class OmronPlcRx : IOmronPlcRx
     }
 
     /// <inheritdoc />
+        /// <typeparam name="T">The t value type.</typeparam>
+        /// <param name="tagName">The tag name value.</param>
     public T? Value<T>(string? tagName)
     {
         if (tagName is null)
@@ -179,6 +190,9 @@ public sealed class OmronPlcRx : IOmronPlcRx
     }
 
     /// <inheritdoc />
+        /// <typeparam name="T">The t value type.</typeparam>
+        /// <param name="tagName">The tag name value.</param>
+        /// <param name="value">The value to write.</param>
     public void Value<T>(string? tagName, T? value)
     {
         if (tagName is null)
@@ -218,8 +232,9 @@ public sealed class OmronPlcRx : IOmronPlcRx
         {
             _ = _pollLoop.Wait(TimeSpan.FromSeconds(2));
         }
-        catch
+        catch (AggregateException ex)
         {
+            ex.Handle(static inner => inner is OperationCanceledException);
         }
 
         foreach (var bs in _subjects.Values)
@@ -236,22 +251,43 @@ public sealed class OmronPlcRx : IOmronPlcRx
         _cts.Dispose();
     }
 
+    /// <summary>Executes the c on ve rt to operation.</summary>
+    /// <typeparam name="T">The t value type.</typeparam>
+    /// <param name="value">The v al ue value.</param>
+    /// <returns>The result produced by the operation.</returns>
     private static object? ConvertTo<T>(object value)
     {
         return value is T t ? t : (T)Convert.ChangeType(value, typeof(T));
     }
 
+    /// <summary>Throws when a string argument is null, empty, or whitespace.</summary>
+    /// <param name="value">The value to validate.</param>
+    /// <param name="paramName">The parameter name.</param>
+    private static void ThrowIfNullOrWhiteSpace(string? value, string paramName)
+    {
+        if (value is null)
+        {
+            throw new ArgumentNullException(paramName);
+        }
+
+        if (value.Trim().Length == 0)
+        {
+            throw new ArgumentException("The value cannot be empty or whitespace.", paramName);
+        }
+    }
+
+    /// <summary>Initializes a new instance of the <see cref="ParseAddress"/> class.</summary>
+    /// <param name="address">The a dd re ss value.</param>
+    /// <returns>The result produced by the operation.</returns>
     private static (string Area, ushort Address, byte? BitIndex) ParseAddress(string address)
     {
         var baseForParse = address;
         var bracketIndex = baseForParse.IndexOf('[');
-        if (bracketIndex >= 0)
+        if (bracketIndex >= 0 &&
+            baseForParse.IndexOf(']', bracketIndex + 1) is var endBracket &&
+            endBracket > bracketIndex)
         {
-            var endBracket = baseForParse.IndexOf(']', bracketIndex + 1);
-            if (endBracket > bracketIndex)
-            {
-                baseForParse = baseForParse.Remove(bracketIndex, endBracket - bracketIndex + 1);
-            }
+            baseForParse = baseForParse.Remove(bracketIndex, endBracket - bracketIndex + 1);
         }
 
         var dotIndex = baseForParse.IndexOf('.');
@@ -259,8 +295,8 @@ public sealed class OmronPlcRx : IOmronPlcRx
         string? bitPart = null;
         if (dotIndex >= 0)
         {
-            basePart = baseForParse.Substring(0, dotIndex);
-            bitPart = baseForParse.Substring(dotIndex + 1);
+            basePart = baseForParse[..dotIndex];
+            bitPart = baseForParse[(dotIndex + 1)..];
         }
         else
         {
@@ -293,7 +329,7 @@ public sealed class OmronPlcRx : IOmronPlcRx
             throw new FormatException($"No numeric portion in address '{address}'");
         }
 
-        var area = basePart.Substring(0, firstDigit).ToUpperInvariant();
+        var area = basePart[..firstDigit].ToUpperInvariant();
         var numberPart = basePart.Remove(0, firstDigit);
         if (!ushort.TryParse(numberPart, out var addr))
         {
@@ -303,6 +339,10 @@ public sealed class OmronPlcRx : IOmronPlcRx
         return (area, addr, bitIndex);
     }
 
+    /// <summary>Initializes a new instance of the <see cref="ExtractStringMeta"/> class.</summary>
+    /// <param name="address">The a dd re ss value.</param>
+    /// <param name="defaultLength">The d ef au lt le ng th value.</param>
+    /// <returns>The result produced by the operation.</returns>
     private static (string BaseAddress, int Length) ExtractStringMeta(string address, int defaultLength = 16)
     {
         var bracketIndex = address.IndexOf('[');
@@ -311,7 +351,7 @@ public sealed class OmronPlcRx : IOmronPlcRx
             var end = address.IndexOf(']', bracketIndex + 1);
             if (end > bracketIndex)
             {
-                var lenPart = address.Substring(bracketIndex + 1, end - bracketIndex - 1);
+                var lenPart = address[(bracketIndex + 1)..end];
                 if (int.TryParse(lenPart, out var len) && len > 0)
                 {
                     return (address.Remove(bracketIndex, end - bracketIndex + 1), len);
@@ -322,6 +362,9 @@ public sealed class OmronPlcRx : IOmronPlcRx
         return (address, defaultLength);
     }
 
+    /// <summary>Initializes a new instance of the <see cref="ToBitType"/> class.</summary>
+    /// <param name="area">The a re a value.</param>
+    /// <returns>The result produced by the operation.</returns>
     private static MemoryBitDataType ToBitType(string area) => area switch
     {
         "D" or "DM" => MemoryBitDataType.DataMemory,
@@ -332,6 +375,9 @@ public sealed class OmronPlcRx : IOmronPlcRx
         _ => throw new ArgumentOutOfRangeException(nameof(area), $"Unsupported bit area '{area}'"),
     };
 
+    /// <summary>Initializes a new instance of the <see cref="ToWordType"/> class.</summary>
+    /// <param name="area">The a re a value.</param>
+    /// <returns>The result produced by the operation.</returns>
     private static MemoryWordDataType ToWordType(string area) => area switch
     {
         "D" or "DM" => MemoryWordDataType.DataMemory,
@@ -342,6 +388,8 @@ public sealed class OmronPlcRx : IOmronPlcRx
         _ => throw new ArgumentOutOfRangeException(nameof(area), $"Unsupported word area '{area}'"),
     };
 
+    /// <summary>Initializes a new instance of the <see cref="PollLoopAsync"/> class.</summary>
+    /// <returns>A task that represents the asynchronous operation.</returns>
     private async Task PollLoopAsync()
     {
         // Lazy initialize PLC once before first poll
@@ -410,6 +458,12 @@ public sealed class OmronPlcRx : IOmronPlcRx
         }
     }
 
+    /// <summary>Executes the w ri te va lu ea sy nc operation.</summary>
+        /// <typeparam name="T">The t value type.</typeparam>
+    /// <param name="entry">The e nt ry value.</param>
+    /// <param name="value">The v al ue value.</param>
+    /// <param name="ct">The c t value.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
     private async Task WriteValueAsync<T>(TagEntry<T> entry, T? value, CancellationToken ct)
     {
         if (value is null)
@@ -538,13 +592,13 @@ public sealed class OmronPlcRx : IOmronPlcRx
             }
 
             // Construct 4 words: bytes[0..1] high-most ... bytes[6..7] low-most; need to output low words first
-            var wHigh0 = (ushort)((bytes[0] << 8) | bytes[1]);
-            var wHigh1 = (ushort)((bytes[2] << 8) | bytes[3]);
-            var wLow2 = (ushort)((bytes[4] << 8) | bytes[5]);
-            var wLow3 = (ushort)((bytes[6] << 8) | bytes[7]);
+            var highOrderWord0 = (ushort)((bytes[0] << 8) | bytes[1]);
+            var highOrderWord1 = (ushort)((bytes[2] << 8) | bytes[3]);
+            var lowOrderWord0 = (ushort)((bytes[4] << 8) | bytes[5]);
+            var lowOrderWord1 = (ushort)((bytes[6] << 8) | bytes[7]);
 
             // Order: low words first, then high words
-            short[] words = [unchecked((short)wLow2), unchecked((short)wLow3), unchecked((short)wHigh0), unchecked((short)wHigh1)];
+            short[] words = [unchecked((short)lowOrderWord0), unchecked((short)lowOrderWord1), unchecked((short)highOrderWord0), unchecked((short)highOrderWord1)];
             await _plc.WriteWordsAsync(words, addr2, ToWordType(area2), ct).ConfigureAwait(false);
         }
         else if (typeof(T) == typeof(Bcd16))
@@ -575,12 +629,17 @@ public sealed class OmronPlcRx : IOmronPlcRx
         }
     }
 
+    /// <summary>Represents the t ag en tr y type.</summary>
+        /// <typeparam name="T">The t value type.</typeparam>
+    /// <param name="tag">The t ag value.</param>
     private sealed class TagEntry<T>(PlcTag<T> tag) : ITagEntry
     {
-        /// <summary>Gets the strongly typed tag.</summary>
+        /// <summary>Gets the tag value.</summary>
         public IPlcTag Tag { get; } = tag;
 
         /// <inheritdoc />
+        /// <param name="plc">The plc value.</param>
+        /// <param name="ct">The ct value.</param>
         public async Task<bool> ReadAsync(OmronPLCConnection plc, CancellationToken ct)
         {
             // String handling

@@ -1,11 +1,15 @@
-// Copyright (c) Chris Pulman. All rights reserved.
-// Licensed under the MIT license. See LICENSE file in the project root for full license information.
+// Copyright (c) 2022-2026 Chris Pulman. All rights reserved.
+// Chris Pulman licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for full license information.
 
 namespace OmronPlcRx.Enums;
 
 /// <summary>Word-addressable PLC memory areas.</summary>
 public enum MemoryWordDataType
 {
+    /// <summary>No word-addressable memory area.</summary>
+    None = 0,
+
     /// <summary>Data memory area (DM).</summary>
     DataMemory = 0x82,
 

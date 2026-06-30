@@ -1,5 +1,6 @@
-// Copyright (c) Chris Pulman. All rights reserved.
-// Licensed under the MIT license. See LICENSE file in the project root for full license information.
+// Copyright (c) 2022-2026 Chris Pulman. All rights reserved.
+// Chris Pulman licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for full license information.
 
 using System;
 
@@ -8,11 +9,13 @@ namespace OmronPlcRx;
 /// <summary>Encodes and decodes Omron Toolbus serial frames carrying binary FINS messages.</summary>
 public static class ToolbusFinsFrameCodec
 {
+    /// <summary>Stores the m in im um fi ns re qu es tl en gt h value.</summary>
     private const int MinimumFinsRequestLength = 12;
 
+    /// <summary>Stores the m in im um fi ns re sp on se le ng th value.</summary>
     private const int MinimumFinsResponseLength = 14;
 
-    /// <summary>Gets the Toolbus synchronization frame exchanged before normal 0xAB frames.</summary>
+    /// <summary>Gets the synchronization frame value.</summary>
     public static ReadOnlyMemory<byte> SynchronizationFrame => new byte[] { 0xAC, 0x01 };
 
     /// <summary>Encodes a binary FINS message into a Toolbus frame.</summary>
@@ -37,8 +40,8 @@ public static class ToolbusFinsFrameCodec
         frame[2] = (byte)(frameLength & 0xFF);
         finsMessage.CopyTo(frame.AsMemory(3));
         var checksum = CalculateChecksum(frame.AsSpan(0, frame.Length - 2));
-        frame[frame.Length - 2] = (byte)((checksum >> 8) & 0xFF);
-        frame[frame.Length - 1] = (byte)(checksum & 0xFF);
+        frame[^2] = (byte)((checksum >> 8) & 0xFF);
+        frame[^1] = (byte)(checksum & 0xFF);
         return frame;
     }
 

@@ -1,12 +1,13 @@
-// Copyright (c) Chris Pulman. All rights reserved.
-// Licensed under the MIT license. See LICENSE file in the project root for full license information.
+// Copyright (c) 2022-2026 Chris Pulman. All rights reserved.
+// Chris Pulman licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for full license information.
 
 using System;
 using System.IO.Ports;
 
 namespace OmronPlcRx;
 
-/// <summary>Serial FINS connection settings for Host Link FINS or Toolbus framing.</summary>
+/// <summary>Gets or sets the omron serial options value.</summary>
 public sealed record OmronSerialOptions
 {
     /// <summary>Initializes a new instance of the <see cref="OmronSerialOptions"/> class.</summary>
@@ -21,43 +22,43 @@ public sealed record OmronSerialOptions
         PortName = portName;
     }
 
-    /// <summary>Gets the serial port name.</summary>
+    /// <summary>Gets or sets the port name value.</summary>
     public string PortName { get; init; }
 
-    /// <summary>Gets the serial baud rate.</summary>
+    /// <summary>Gets or sets the baud rate value.</summary>
     public int BaudRate { get; init; } = 9600;
 
-    /// <summary>Gets the serial data bit count.</summary>
+    /// <summary>Gets or sets the data bits value.</summary>
     public int DataBits { get; init; } = 7;
 
-    /// <summary>Gets the serial parity setting.</summary>
+    /// <summary>Gets or sets the parity value.</summary>
     public Parity Parity { get; init; } = Parity.Even;
 
-    /// <summary>Gets the serial stop bits setting.</summary>
+    /// <summary>Gets or sets the stop bits value.</summary>
     public StopBits StopBits { get; init; } = StopBits.Two;
 
-    /// <summary>Gets the serial handshake setting.</summary>
+    /// <summary>Gets or sets the handshake value.</summary>
     public Handshake Handshake { get; init; } = Handshake.None;
 
-    /// <summary>Gets a value indicating whether the serial RTS signal is asserted.</summary>
+    /// <summary>Gets or sets the rts enable value.</summary>
     public bool RtsEnable { get; init; }
 
-    /// <summary>Gets a value indicating whether the serial DTR signal is asserted.</summary>
+    /// <summary>Gets or sets the dtr enable value.</summary>
     public bool DtrEnable { get; init; }
 
-    /// <summary>Gets the serial FINS carrier protocol.</summary>
+    /// <summary>Gets or sets the protocol value.</summary>
     public OmronSerialProtocol Protocol { get; init; } = OmronSerialProtocol.HostLinkFins;
 
-    /// <summary>Gets the Host Link unit number, 0 to 31.</summary>
+    /// <summary>Gets or sets the host link unit number value.</summary>
     public byte HostLinkUnitNumber { get; init; }
 
-    /// <summary>Gets the response wait time nibble, 0 to 15, in units of 10 ms.</summary>
+    /// <summary>Gets or sets the response wait time value.</summary>
     public byte ResponseWaitTime { get; init; }
 
-    /// <summary>Gets the Host Link FINS frame mode.</summary>
+    /// <summary>Gets or sets the frame mode value.</summary>
     public OmronHostLinkFinsFrameMode FrameMode { get; init; } = OmronHostLinkFinsFrameMode.Direct;
 
-    /// <summary>Gets the maximum serial frame length in bytes, including terminator.</summary>
+    /// <summary>Gets or sets the maximum frame length value.</summary>
     public int MaximumFrameLength { get; init; } = 1004;
 
     /// <summary>Creates Toolbus serial options using common Omron Toolbus port settings.</summary>
@@ -66,7 +67,7 @@ public sealed record OmronSerialOptions
     public static OmronSerialOptions CreateToolbus(string portName) => new(portName)
     {
         Protocol = OmronSerialProtocol.Toolbus,
-        BaudRate = 115200,
+        BaudRate = 115_200,
         DataBits = 8,
         Parity = Parity.None,
         StopBits = StopBits.One,
