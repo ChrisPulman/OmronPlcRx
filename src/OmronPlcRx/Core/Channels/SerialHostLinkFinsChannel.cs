@@ -1,5 +1,6 @@
-// Copyright (c) Chris Pulman. All rights reserved.
-// Licensed under the MIT license. See LICENSE file in the project root for full license information.
+// Copyright (c) 2022-2026 Chris Pulman. All rights reserved.
+// Chris Pulman licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for full license information.
 
 using System;
 using System.Collections.Concurrent;
@@ -12,16 +13,23 @@ using OmronPlcRx.Core.Results;
 
 namespace OmronPlcRx.Core.Channels;
 
+/// <summary>Represents the s er ia lh os tl in kf in sc ha nn el type.</summary>
 internal sealed class SerialHostLinkFinsChannel : BaseChannel
 {
+    /// <summary>Stores the o pt io ns value.</summary>
     private readonly OmronSerialOptions _options;
 
+    /// <summary>Executes the r ec ei ve db yt es operation.</summary>
     private readonly ConcurrentQueue<byte> _receivedBytes = new();
 
+    /// <summary>Stores the p or t value.</summary>
     private SerialPortRx? _port;
 
+    /// <summary>Stores the h os tl in kc od ec value.</summary>
     private HostLinkFinsFrameCodec? _hostLinkCodec;
 
+    /// <summary>Initializes a new instance of the <see cref="SerialHostLinkFinsChannel"/> class.</summary>
+    /// <param name="options">The o pt io ns value.</param>
     internal SerialHostLinkFinsChannel(OmronSerialOptions options)
         : base(options?.PortName ?? throw new ArgumentNullException(nameof(options)), 0)
     {
@@ -36,15 +44,11 @@ internal sealed class SerialHostLinkFinsChannel : BaseChannel
             _port?.Close();
             _port?.Dispose();
         }
-        catch
-        {
-        }
         finally
         {
             _port = null;
+            base.Dispose();
         }
-
-        base.Dispose();
     }
 
     internal override async Task InitializeAsync(int timeout, CancellationToken cancellationToken)
@@ -108,6 +112,10 @@ internal sealed class SerialHostLinkFinsChannel : BaseChannel
         return Task.CompletedTask;
     }
 
+    /// <summary>Initializes a new instance of the <see cref="ReceiveHostLinkMessageAsync"/> class.</summary>
+    /// <param name="timeout">The t im eo ut value.</param>
+    /// <param name="cancellationToken">The c an ce ll at io nt ok en value.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
     private async Task<ReceiveMessageResult> ReceiveHostLinkMessageAsync(int timeout, CancellationToken cancellationToken)
     {
         var received = new List<byte>();
@@ -148,6 +156,10 @@ internal sealed class SerialHostLinkFinsChannel : BaseChannel
         throw new OmronPLCException($"Failed to Receive Host Link FINS Message within the Timeout Period from Omron PLC serial port '{RemoteHost}'");
     }
 
+    /// <summary>Initializes a new instance of the <see cref="ReceiveToolbusMessageAsync"/> class.</summary>
+    /// <param name="timeout">The t im eo ut value.</param>
+    /// <param name="cancellationToken">The c an ce ll at io nt ok en value.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
     private async Task<ReceiveMessageResult> ReceiveToolbusMessageAsync(int timeout, CancellationToken cancellationToken)
     {
         var received = new List<byte>();
@@ -213,6 +225,10 @@ internal sealed class SerialHostLinkFinsChannel : BaseChannel
         throw new OmronPLCException($"Failed to Receive Toolbus FINS Message within the Timeout Period from Omron PLC serial port '{RemoteHost}'");
     }
 
+    /// <summary>Initializes a new instance of the <see cref="InitializeClient"/> class.</summary>
+    /// <param name="timeout">The t im eo ut value.</param>
+    /// <param name="cancellationToken">The c an ce ll at io nt ok en value.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
     private async Task InitializeClient(int timeout, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -239,6 +255,10 @@ internal sealed class SerialHostLinkFinsChannel : BaseChannel
         await SynchronizeToolbusAsync(timeout, cancellationToken).ConfigureAwait(false);
     }
 
+    /// <summary>Initializes a new instance of the <see cref="SynchronizeToolbusAsync"/> class.</summary>
+    /// <param name="timeout">The t im eo ut value.</param>
+    /// <param name="cancellationToken">The c an ce ll at io nt ok en value.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
     private async Task SynchronizeToolbusAsync(int timeout, CancellationToken cancellationToken)
     {
         if (_port is null)
@@ -284,6 +304,11 @@ internal sealed class SerialHostLinkFinsChannel : BaseChannel
         throw new OmronPLCException($"Failed to synchronize Toolbus serial port '{RemoteHost}' within the timeout period.");
     }
 
+    /// <summary>Initializes a new instance of the <see cref="WaitForSerialDataAsync"/> class.</summary>
+    /// <param name="startTimestamp">The s ta rt ti me st am p value.</param>
+    /// <param name="timeout">The t im eo ut value.</param>
+    /// <param name="cancellationToken">The c an ce ll at io nt ok en value.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
     private async Task<bool> WaitForSerialDataAsync(DateTime startTimestamp, int timeout, CancellationToken cancellationToken)
     {
         if (PumpReceiveBuffer() > 0)
@@ -303,6 +328,8 @@ internal sealed class SerialHostLinkFinsChannel : BaseChannel
         return true;
     }
 
+    /// <summary>Initializes a new instance of the <see cref="PumpReceiveBuffer"/> class.</summary>
+    /// <returns>The result produced by the operation.</returns>
     private int PumpReceiveBuffer()
     {
         if (_port is null)
@@ -326,8 +353,11 @@ internal sealed class SerialHostLinkFinsChannel : BaseChannel
         return totalRead;
     }
 
+    /// <summary>Initializes a new instance of the <see cref="GetHostLinkCodec"/> class.</summary>
+    /// <returns>The result produced by the operation.</returns>
     private HostLinkFinsFrameCodec GetHostLinkCodec() => _hostLinkCodec ?? throw new OmronPLCException($"The serial Host Link FINS codec for '{RemoteHost}' is not initialized.");
 
+    /// <summary>Initializes a new instance of the <see cref="DestroyClient"/> class.</summary>
     private void DestroyClient()
     {
         try
@@ -342,6 +372,7 @@ internal sealed class SerialHostLinkFinsChannel : BaseChannel
         }
     }
 
+    /// <summary>Initializes a new instance of the <see cref="ClearReceiveQueue"/> class.</summary>
     private void ClearReceiveQueue()
     {
         while (_receivedBytes.TryDequeue(out _))

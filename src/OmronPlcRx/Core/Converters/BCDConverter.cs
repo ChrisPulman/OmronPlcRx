@@ -1,12 +1,13 @@
-// Copyright (c) Chris Pulman. All rights reserved.
-// Licensed under the MIT license. See LICENSE file in the project root for full license information.
+// Copyright (c) 2022-2026 Chris Pulman. All rights reserved.
+// Chris Pulman licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for full license information.
 
 using System;
 using System.Collections.Generic;
 
 namespace OmronPlcRx.Core.Converters;
 
-/// <summary>BCDConverter.</summary>
+/// <summary>Converts between BCD encoded values and numeric values.</summary>
 public static class BCDConverter
 {
     /// <summary>Converts to byte.</summary>
@@ -183,6 +184,9 @@ public static class BCDConverter
     /// <returns>A BCD-encoded byte array.</returns>
     public static byte[] GetBCDBytes(uint binaryValue) => ConvertToBCDBytes(binaryValue, 4);
 
+    /// <summary>Initializes a new instance of the <see cref="ConvertToBinaryBytes"/> class.</summary>
+    /// <param name="bcdBytes">The b cd by te s value.</param>
+    /// <returns>The result produced by the operation.</returns>
     private static byte[] ConvertToBinaryBytes(byte[] bcdBytes)
     {
         if (bcdBytes.Length == 0)
@@ -211,6 +215,10 @@ public static class BCDConverter
         return result;
     }
 
+    /// <summary>Initializes a new instance of the <see cref="ConvertToBCDBytes"/> class.</summary>
+    /// <param name="binaryValue">The b in ar yv al ue value.</param>
+    /// <param name="byteLength">The b yt el en gt h value.</param>
+    /// <returns>The result produced by the operation.</returns>
     private static byte[] ConvertToBCDBytes(long binaryValue, int byteLength)
     {
         var bcdBytes = new byte[byteLength];

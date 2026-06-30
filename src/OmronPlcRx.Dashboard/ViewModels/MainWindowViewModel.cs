@@ -1,5 +1,6 @@
-// Copyright (c) Chris Pulman. All rights reserved.
-// Licensed under the MIT license. See LICENSE file in the project root for full license information.
+// Copyright (c) 2022-2026 Chris Pulman. All rights reserved.
+// Chris Pulman licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for full license information.
 
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -44,75 +45,75 @@ public sealed class MainWindowViewModel : ReactiveObject, IDisposable
         WriteTagCommand = ReactiveCommand.CreateFromTask<TagDefinition>(WriteTagAsync, this.WhenAnyValue(v => v.IsConnected));
     }
 
-    /// <summary>Gets enum values for binding connection method.</summary>
+    /// <summary>Gets the connection methods value.</summary>
     public Array ConnectionMethods { get; }
 
-    /// <summary>Gets serial protocol values for binding serial settings.</summary>
+    /// <summary>Gets the serial protocols value.</summary>
     public Array SerialProtocols { get; }
 
-    /// <summary>Gets parity values for binding serial settings.</summary>
+    /// <summary>Gets the serial parities value.</summary>
     public Array SerialParities { get; }
 
-    /// <summary>Gets stop-bit values for binding serial settings.</summary>
+    /// <summary>Gets the serial stop bits value.</summary>
     public Array SerialStopBits { get; }
 
-    /// <summary>Gets handshake values for binding serial settings.</summary>
+    /// <summary>Gets the serial handshakes value.</summary>
     public Array SerialHandshakes { get; }
 
-    /// <summary>Gets Host Link FINS frame modes for binding serial settings.</summary>
+    /// <summary>Gets the serial frame modes value.</summary>
     public Array SerialFrameModes { get; }
 
     /// <summary>Gets connection settings.</summary>
     public ConnectionSettings Settings { get; } = new();
 
-    /// <summary>Gets observable tag collection.</summary>
+    /// <summary>Gets the tags value.</summary>
     public ReadOnlyObservableCollection<TagDefinition> Tags { get; }
 
-    /// <summary>Gets a value indicating whether a PLC connection is active.</summary>
+    /// <summary>Gets the is connected value.</summary>
     public bool IsConnected
     {
         get => _isConnected;
         private set => this.RaiseAndSetIfChanged(ref _isConnected, value);
     }
 
-    /// <summary>Gets status text.</summary>
+    /// <summary>Gets the status value.</summary>
     public string Status
     {
         get => _status;
         private set => this.RaiseAndSetIfChanged(ref _status, value);
     }
 
-    /// <summary>Gets the connected PLC type.</summary>
+    /// <summary>Gets the plc type value.</summary>
     public PLCType? PLCType
     {
         get => _plcType;
         private set => this.RaiseAndSetIfChanged(ref _plcType, value);
     }
 
-    /// <summary>Gets the connected controller model.</summary>
+    /// <summary>Gets the controller model value.</summary>
     public string? ControllerModel
     {
         get => _controllerModel;
         private set => this.RaiseAndSetIfChanged(ref _controllerModel, value);
     }
 
-    /// <summary>Gets the connected controller version.</summary>
+    /// <summary>Gets the controller version value.</summary>
     public string? ControllerVersion
     {
         get => _controllerVersion;
         private set => this.RaiseAndSetIfChanged(ref _controllerVersion, value);
     }
 
-    /// <summary>Gets the connect command.</summary>
+    /// <summary>Gets the connect command value.</summary>
     public ReactiveCommand<RxVoid, RxVoid> ConnectCommand { get; }
 
-    /// <summary>Gets the disconnect command.</summary>
+    /// <summary>Gets the disconnect command value.</summary>
     public ReactiveCommand<RxVoid, RxVoid> DisconnectCommand { get; }
 
-    /// <summary>Gets the add tag command.</summary>
+    /// <summary>Gets the add tag command value.</summary>
     public ReactiveCommand<RxVoid, RxVoid> AddTagCommand { get; }
 
-    /// <summary>Gets the write tag command.</summary>
+    /// <summary>Gets the write tag command value.</summary>
     public ReactiveCommand<TagDefinition, RxVoid> WriteTagCommand { get; }
 
     /// <inheritdoc />

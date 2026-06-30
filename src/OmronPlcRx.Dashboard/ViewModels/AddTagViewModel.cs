@@ -1,5 +1,6 @@
-// Copyright (c) Chris Pulman. All rights reserved.
-// Licensed under the MIT license. See LICENSE file in the project root for full license information.
+// Copyright (c) 2022-2026 Chris Pulman. All rights reserved.
+// Chris Pulman licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for full license information.
 
 using System.Text.RegularExpressions;
 using ReactiveUI;
@@ -22,6 +23,7 @@ public sealed partial class AddTagViewModel : ReactiveObject
     private bool _canAccept;
 
     /// <summary>Initializes a new instance of the <see cref="AddTagViewModel"/> class.</summary>
+        /// <param name="allowedTypes">The allowed types value.</param>
     public AddTagViewModel(IEnumerable<Type> allowedTypes)
     {
         AllowedTypes = new List<Type>(allowedTypes);
@@ -31,45 +33,45 @@ public sealed partial class AddTagViewModel : ReactiveObject
         OkCommand = ReactiveCommand.Create(static () => { }, this.WhenAnyValue(v => v.CanAccept));
     }
 
-    /// <summary>Gets allowed types.</summary>
+    /// <summary>Gets the allowed types value.</summary>
     public IReadOnlyList<Type> AllowedTypes { get; }
 
-    /// <summary>Gets or sets tag name.</summary>
+    /// <summary>Gets or sets the name value.</summary>
     public string Name
     {
         get => _name;
         set => this.RaiseAndSetIfChanged(ref _name, value);
     }
 
-    /// <summary>Gets or sets PLC address.</summary>
+    /// <summary>Gets or sets the address value.</summary>
     public string Address
     {
         get => _address;
         set => this.RaiseAndSetIfChanged(ref _address, value);
     }
 
-    /// <summary>Gets or sets selected value type.</summary>
+    /// <summary>Gets or sets the selected type value.</summary>
     public Type SelectedType
     {
         get => _selectedType;
         set => this.RaiseAndSetIfChanged(ref _selectedType, value);
     }
 
-    /// <summary>Gets validation message.</summary>
+    /// <summary>Gets the validation message value.</summary>
     public string ValidationMessage
     {
         get => _validationMessage;
         private set => this.RaiseAndSetIfChanged(ref _validationMessage, value);
     }
 
-    /// <summary>Gets a value indicating whether OK can be accepted.</summary>
+    /// <summary>Gets the can accept value.</summary>
     public bool CanAccept
     {
         get => _canAccept;
         private set => this.RaiseAndSetIfChanged(ref _canAccept, value);
     }
 
-    /// <summary>Gets OK command.</summary>
+    /// <summary>Gets the ok command value.</summary>
     public ReactiveCommand<RxVoid, RxVoid> OkCommand { get; }
 
     private bool Validate(string? name, string? address)

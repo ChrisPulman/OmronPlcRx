@@ -1,5 +1,6 @@
-// Copyright (c) Chris Pulman. All rights reserved.
-// Licensed under the MIT license. See LICENSE file in the project root for full license information.
+// Copyright (c) 2022-2026 Chris Pulman. All rights reserved.
+// Chris Pulman licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for full license information.
 
 using System;
 using System.Collections.Generic;
@@ -61,10 +62,12 @@ public sealed class PlcTagSourceGenerator : ISourceGenerator
         true);
 
     /// <inheritdoc />
+        /// <param name="context">The context value.</param>
     public void Initialize(GeneratorInitializationContext context) =>
         context.RegisterForSyntaxNotifications(static () => new SyntaxReceiver());
 
     /// <inheritdoc />
+        /// <param name="context">The context value.</param>
     public void Execute(GeneratorExecutionContext context)
     {
         if (context.SyntaxReceiver is not SyntaxReceiver receiver)
@@ -833,6 +836,7 @@ public sealed class PlcTagSourceGenerator : ISourceGenerator
         public List<FieldDeclarationSyntax> CandidateFields { get; } = new();
 
         /// <inheritdoc />
+        /// <param name="syntaxNode">The syntax node value.</param>
         public void OnVisitSyntaxNode(SyntaxNode syntaxNode)
         {
             if (syntaxNode is not FieldDeclarationSyntax fieldDeclaration)
@@ -887,34 +891,34 @@ public sealed class PlcTagSourceGenerator : ISourceGenerator
             Writable = writable;
         }
 
-        /// <summary>Gets the original backing field name.</summary>
+        /// <summary>Gets the field name value.</summary>
         public string FieldName { get; }
 
-        /// <summary>Gets the generated property name.</summary>
+        /// <summary>Gets the property name value.</summary>
         public string PropertyName { get; }
 
-        /// <summary>Gets the generated signal field name.</summary>
+        /// <summary>Gets the subject name value.</summary>
         public string SubjectName { get; }
 
-        /// <summary>Gets the PLC address.</summary>
+        /// <summary>Gets the address value.</summary>
         public string Address { get; }
 
-        /// <summary>Gets the logical PLC tag name.</summary>
+        /// <summary>Gets the tag name value.</summary>
         public string TagName { get; }
 
-        /// <summary>Gets the generated property type name.</summary>
+        /// <summary>Gets the property type value.</summary>
         public string PropertyType { get; }
 
-        /// <summary>Gets the PLC observe/write type name.</summary>
+        /// <summary>Gets the tag type value.</summary>
         public string TagType { get; }
 
-        /// <summary>Gets a value indicating whether the tag should be registered.</summary>
+        /// <summary>Gets the register value.</summary>
         public bool Register { get; }
 
-        /// <summary>Gets a value indicating whether the tag should be observed.</summary>
+        /// <summary>Gets the observe value.</summary>
         public bool Observe { get; }
 
-        /// <summary>Gets a value indicating whether a write helper should be generated.</summary>
+        /// <summary>Gets the writable value.</summary>
         public bool Writable { get; }
     }
 }

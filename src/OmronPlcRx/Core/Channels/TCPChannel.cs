@@ -1,5 +1,6 @@
-// Copyright (c) Chris Pulman. All rights reserved.
-// Licensed under the MIT license. See LICENSE file in the project root for full license information.
+// Copyright (c) 2022-2026 Chris Pulman. All rights reserved.
+// Chris Pulman licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for full license information.
 
 using System;
 using System.Collections.Generic;
@@ -10,26 +11,38 @@ using OmronPlcRx.Core.Results;
 
 namespace OmronPlcRx.Core.Channels;
 
+/// <summary>Represents the t cp ch an ne l type.</summary>
 internal sealed class TCPChannel : BaseChannel
 {
+    /// <summary>Stores the t cp he ad er le ng th value.</summary>
     private const int TcpHeaderLength = 16;
 
+    /// <summary>Stores the c li en t value.</summary>
     private TcpClient? _client;
 
+    /// <summary>Initializes a new instance of the <see cref="TCPChannel"/> class.</summary>
+    /// <param name="remoteHost">The r em ot eh os t value.</param>
+    /// <param name="port">The p or t value.</param>
     internal TCPChannel(string remoteHost, int port)
         : base(remoteHost, port)
     {
     }
 
+    /// <summary>Represents the e nt cp co mm an dc od e enumeration.</summary>
     internal enum EnTCPCommandCode : byte
     {
+        /// <summary>Represents the n od ea dd re ss to pl c enum value.</summary>
         NodeAddressToPLC = 0,
+        /// <summary>Represents the n od ea dd re ss fr om pl c enum value.</summary>
         NodeAddressFromPLC = 1,
+        /// <summary>Represents the f in sf ra me enum value.</summary>
         FINSFrame = 2,
     }
 
+    /// <summary>Gets the local node id value.</summary>
     internal byte LocalNodeID { get; private set; }
 
+    /// <summary>Gets the remote node id value.</summary>
     internal byte RemoteNodeID { get; private set; }
 
     public override void Dispose()
@@ -38,12 +51,10 @@ internal sealed class TCPChannel : BaseChannel
         {
             _client?.Dispose();
         }
-        catch
-        {
-        }
         finally
         {
             _client = null;
+            base.Dispose();
         }
     }
 
@@ -121,17 +132,35 @@ internal sealed class TCPChannel : BaseChannel
                 {
                     await client.ReceiveAsync(buffer, timeout, cancellationToken);
                 }
-                catch
+                catch (TimeoutException)
+                {
+                    return;
+                }
+                catch (ObjectDisposedException)
+                {
+                    return;
+                }
+                catch (System.Net.Sockets.SocketException)
                 {
                     return;
                 }
             }
         }
-        catch
+        catch (TimeoutException)
+        {
+        }
+        catch (ObjectDisposedException)
+        {
+        }
+        catch (System.Net.Sockets.SocketException)
         {
         }
     }
 
+    /// <summary>Initializes a new instance of the <see cref="BuildFinsTcpMessage"/> class.</summary>
+    /// <param name="command">The c om ma nd value.</param>
+    /// <param name="message">The m es sa ge value.</param>
+    /// <returns>The result produced by the operation.</returns>
     private static ReadOnlyMemory<byte> BuildFinsTcpMessage(EnTCPCommandCode command, ReadOnlyMemory<byte> message)
     {
         // FINS Message Identifier
@@ -165,6 +194,10 @@ internal sealed class TCPChannel : BaseChannel
         return tcpMessage.ToArray();
     }
 
+    /// <summary>Initializes a new instance of the <see cref="InitializeClient"/> class.</summary>
+    /// <param name="timeout">The t im eo ut value.</param>
+    /// <param name="cancellationToken">The c an ce ll at io nt ok en value.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
     private async Task InitializeClient(int timeout, CancellationToken cancellationToken)
     {
         _client = new(RemoteHost, Port);
@@ -206,6 +239,7 @@ internal sealed class TCPChannel : BaseChannel
         }
     }
 
+    /// <summary>Initializes a new instance of the <see cref="DestroyClient"/> class.</summary>
     private void DestroyClient()
     {
         try
@@ -218,6 +252,12 @@ internal sealed class TCPChannel : BaseChannel
         }
     }
 
+    /// <summary>Initializes a new instance of the <see cref="SendMessageAsync1"/> class.</summary>
+    /// <param name="command">The c om ma nd value.</param>
+    /// <param name="message">The m es sa ge value.</param>
+    /// <param name="timeout">The t im eo ut value.</param>
+    /// <param name="cancellationToken">The c an ce ll at io nt ok en value.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
     private async Task<SendMessageResult> SendMessageAsync1(EnTCPCommandCode command, ReadOnlyMemory<byte> message, int timeout, CancellationToken cancellationToken)
     {
         var client = _client ?? throw new OmronPLCException("Failed to Send FINS Message to Omron PLC '" + RemoteHost + ":" + Port + "' - The TCP Client is not Initialized");
@@ -251,6 +291,11 @@ internal sealed class TCPChannel : BaseChannel
         };
     }
 
+    /// <summary>Initializes a new instance of the <see cref="ReceiveMessageAsync1"/> class.</summary>
+    /// <param name="command">The c om ma nd value.</param>
+    /// <param name="timeout">The t im eo ut value.</param>
+    /// <param name="cancellationToken">The c an ce ll at io nt ok en value.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
     private async Task<ReceiveMessageResult> ReceiveMessageAsync1(EnTCPCommandCode command, int timeout, CancellationToken cancellationToken)
     {
         var bytes = 0;

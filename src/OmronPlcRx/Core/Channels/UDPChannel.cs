@@ -1,5 +1,6 @@
-// Copyright (c) Chris Pulman. All rights reserved.
-// Licensed under the MIT license. See LICENSE file in the project root for full license information.
+// Copyright (c) 2022-2026 Chris Pulman. All rights reserved.
+// Chris Pulman licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for full license information.
 
 using System;
 using System.Collections.Generic;
@@ -10,10 +11,15 @@ using OmronPlcRx.Core.Results;
 
 namespace OmronPlcRx.Core.Channels;
 
+/// <summary>Represents the u dp ch an ne l type.</summary>
 internal sealed class UDPChannel : BaseChannel
 {
+    /// <summary>Stores the c li en t value.</summary>
     private UdpClient? _client;
 
+    /// <summary>Initializes a new instance of the <see cref="UDPChannel"/> class.</summary>
+    /// <param name="remoteHost">The r em ot eh os t value.</param>
+    /// <param name="port">The p or t value.</param>
     internal UDPChannel(string remoteHost, int port)
         : base(remoteHost, port)
     {
@@ -25,12 +31,10 @@ internal sealed class UDPChannel : BaseChannel
         {
             _client?.Dispose();
         }
-        catch
-        {
-        }
         finally
         {
             _client = null;
+            base.Dispose();
         }
     }
 
@@ -200,24 +204,43 @@ internal sealed class UDPChannel : BaseChannel
                 {
                     await client.ReceiveAsync(buffer, timeout, cancellationToken);
                 }
-                catch
+                catch (TimeoutException)
+                {
+                    return;
+                }
+                catch (ObjectDisposedException)
+                {
+                    return;
+                }
+                catch (System.Net.Sockets.SocketException)
                 {
                     return;
                 }
             }
         }
-        catch
+        catch (TimeoutException)
+        {
+        }
+        catch (ObjectDisposedException)
+        {
+        }
+        catch (System.Net.Sockets.SocketException)
         {
         }
     }
 
+    /// <summary>Initializes a new instance of the <see cref="InitializeClient"/> class.</summary>
+    /// <param name="timeout">The t im eo ut value.</param>
+    /// <param name="cancellationToken">The c an ce ll at io nt ok en value.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
     private Task InitializeClient(int timeout, CancellationToken cancellationToken)
     {
-        _client = new UdpClient(RemoteHost, Port);
+        _client = new(RemoteHost, Port);
 
         return Task.CompletedTask;
     }
 
+    /// <summary>Initializes a new instance of the <see cref="DestroyClient"/> class.</summary>
     private void DestroyClient()
     {
         try
