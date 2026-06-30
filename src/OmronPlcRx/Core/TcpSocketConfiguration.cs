@@ -6,7 +6,11 @@ using System;
 using System.Net;
 using System.Net.Sockets;
 
+#if REACTIVE_SHIM
+namespace OmronPlcRx.Reactive.Core;
+#else
 namespace OmronPlcRx.Core;
+#endif
 
 /// <summary>Provides TCP socket setup helpers.</summary>
 internal static class TcpSocketConfiguration

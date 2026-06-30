@@ -4,7 +4,11 @@
 
 using System;
 
+#if REACTIVE_SHIM
+namespace OmronPlcRx.Reactive;
+#else
 namespace OmronPlcRx;
+#endif
 
 /// <summary>Marks a field for PLC reactive stream source generation.</summary>
 /// <param name="address">The a dd re ss value.</param>

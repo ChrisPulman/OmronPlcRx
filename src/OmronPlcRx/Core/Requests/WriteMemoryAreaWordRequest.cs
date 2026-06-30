@@ -4,10 +4,19 @@
 
 using System;
 using System.Collections.Generic;
+#if REACTIVE_SHIM
+using OmronPlcRx.Reactive.Core.Enums;
+using OmronPlcRx.Reactive.Enums;
+#else
 using OmronPlcRx.Core.Enums;
 using OmronPlcRx.Enums;
+#endif
 
+#if REACTIVE_SHIM
+namespace OmronPlcRx.Reactive.Core.Requests;
+#else
 namespace OmronPlcRx.Core.Requests;
+#endif
 
 /// <summary>Represents the w ri te me mo ry ar ea wo rd re qu es t type.</summary>
 internal sealed class WriteMemoryAreaWordRequest : FINSRequest

@@ -7,7 +7,11 @@ using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 
+#if REACTIVE_SHIM
+namespace OmronPlcRx.Reactive.Core;
+#else
 namespace OmronPlcRx.Core;
+#endif
 
 /// <summary>Provides cleanup helpers for timed socket operations.</summary>
 internal static class SocketOperationCleanup

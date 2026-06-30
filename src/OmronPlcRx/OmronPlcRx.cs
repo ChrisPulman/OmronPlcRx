@@ -7,14 +7,25 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+#if REACTIVE_SHIM
+using OmronPlcRx.Reactive.Core;
+using OmronPlcRx.Reactive.Enums;
+using OmronPlcRx.Reactive.Results;
+using OmronPlcRx.Reactive.Tags;
+#else
 using OmronPlcRx.Core;
 using OmronPlcRx.Enums;
 using OmronPlcRx.Results;
 using OmronPlcRx.Tags;
+#endif
 using ReactiveUI.Primitives;
 using ReactiveUI.Primitives.Signals;
 
+#if REACTIVE_SHIM
+namespace OmronPlcRx.Reactive;
+#else
 namespace OmronPlcRx;
+#endif
 
 /// <summary>
 /// Reactive wrapper providing typed tag storage, polling and observation for an <see cref="OmronPLCConnection"/> instance.

@@ -4,7 +4,11 @@
 
 using System;
 
+#if REACTIVE_SHIM
+namespace OmronPlcRx.Reactive.Tags;
+#else
 namespace OmronPlcRx.Tags;
+#endif
 
 /// <summary>Defines metadata and value access for a PLC tag.</summary>
 public interface IPlcTag

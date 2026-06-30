@@ -5,11 +5,20 @@
 using System;
 using System.Collections.Generic;
 using System.Threading;
+#if REACTIVE_SHIM
+using CP.IO.Ports.Reactive;
+using OmronPlcRx.Reactive.Tags;
+#else
 using CP.IO.Ports;
 using OmronPlcRx.Tags;
+#endif
 using ReactiveUI.Primitives.Async;
 
+#if REACTIVE_SHIM
+namespace OmronPlcRx.Reactive.Async;
+#else
 namespace OmronPlcRx.Async;
+#endif
 
 /// <summary>Bridges Omron PLC classic Rx streams into ReactiveUI.Primitives.Async observables.</summary>
 public static class OmronPlcRxAsyncObservableExtensions

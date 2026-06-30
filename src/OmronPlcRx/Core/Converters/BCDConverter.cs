@@ -5,7 +5,11 @@
 using System;
 using System.Collections.Generic;
 
+#if REACTIVE_SHIM
+namespace OmronPlcRx.Reactive.Core.Converters;
+#else
 namespace OmronPlcRx.Core.Converters;
+#endif
 
 /// <summary>Converts between BCD encoded values and numeric values.</summary>
 public static class BCDConverter

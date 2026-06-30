@@ -2,7 +2,11 @@
 // Chris Pulman licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for full license information.
 
+#if REACTIVE_SHIM
+namespace OmronPlcRx.Reactive.Enums;
+#else
 namespace OmronPlcRx.Enums;
+#endif
 
 /// <summary>Supported Omron PLC types used to adjust message capabilities and limits.</summary>
 public enum PLCType

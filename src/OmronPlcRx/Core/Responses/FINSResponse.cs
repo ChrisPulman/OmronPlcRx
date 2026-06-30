@@ -4,10 +4,19 @@
 
 using System;
 using System.Collections.Generic;
+#if REACTIVE_SHIM
+using OmronPlcRx.Reactive.Core.Enums;
+using OmronPlcRx.Reactive.Core.Requests;
+#else
 using OmronPlcRx.Core.Enums;
 using OmronPlcRx.Core.Requests;
+#endif
 
+#if REACTIVE_SHIM
+namespace OmronPlcRx.Reactive.Core.Responses;
+#else
 namespace OmronPlcRx.Core.Responses;
+#endif
 
 /// <summary>Represents the f in sr es po ns e type.</summary>
 internal sealed class FINSResponse

@@ -3,9 +3,17 @@
 // See the LICENSE file in the project root for full license information.
 
 using System;
+#if REACTIVE_SHIM
+using OmronPlcRx.Reactive.Core.Requests;
+#else
 using OmronPlcRx.Core.Requests;
+#endif
 
+#if REACTIVE_SHIM
+namespace OmronPlcRx.Reactive.Core.Responses;
+#else
 namespace OmronPlcRx.Core.Responses;
+#endif
 
 /// <summary>Represents the w ri te me mo ry ar ea wo rd re sp on se type.</summary>
 internal static class WriteMemoryAreaWordResponse

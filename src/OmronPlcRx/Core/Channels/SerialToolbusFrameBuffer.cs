@@ -4,7 +4,11 @@
 
 using System.Collections.Generic;
 
+#if REACTIVE_SHIM
+namespace OmronPlcRx.Reactive.Core.Channels;
+#else
 namespace OmronPlcRx.Core.Channels;
+#endif
 
 /// <summary>Provides Toolbus serial frame buffer helpers.</summary>
 internal static class SerialToolbusFrameBuffer

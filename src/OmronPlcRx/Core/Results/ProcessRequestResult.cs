@@ -2,9 +2,17 @@
 // Chris Pulman licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for full license information.
 
+#if REACTIVE_SHIM
+using OmronPlcRx.Reactive.Core.Responses;
+#else
 using OmronPlcRx.Core.Responses;
+#endif
 
+#if REACTIVE_SHIM
+namespace OmronPlcRx.Reactive.Core.Results;
+#else
 namespace OmronPlcRx.Core.Results;
+#endif
 
 /// <summary>Represents the p ro ce ss re qu es tr es ul t type.</summary>
 internal readonly record struct ProcessRequestResult

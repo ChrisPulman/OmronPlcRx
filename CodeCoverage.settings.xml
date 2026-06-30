@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Configuration>
+  <CodeCoverage>
+    <ModulePaths>
+      <Include>
+        <ModulePath>.*\\OmronPlcRx\.dll$</ModulePath>
+      </Include>
+      <Exclude>
+        <ModulePath>.*\\OmronPlcRx\.Reactive\.dll$</ModulePath>
+        <ModulePath>.*\\OmronPlcRx\.Tests\.dll$</ModulePath>
+        <ModulePath>.*\\Examples?\\.*</ModulePath>
+      </Exclude>
+    </ModulePaths>
+    <Sources>
+      <Exclude>
+        <Source>.*\\tests\\.*</Source>
+        <Source>.*\\Tests\\.*</Source>
+        <Source>.*\\examples\\.*</Source>
+        <Source>.*\\Examples\\.*</Source>
+        <Source>.*\\bin\\.*</Source>
+        <Source>.*\\obj\\.*</Source>
+      </Exclude>
+    </Sources>
+    <IncludeTestAssembly>false</IncludeTestAssembly>
+  </CodeCoverage>
+</Configuration>

@@ -2,9 +2,17 @@
 // Chris Pulman licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for full license information.
 
+#if REACTIVE_SHIM
+using OmronPlcRx.Reactive.Core.Requests;
+#else
 using OmronPlcRx.Core.Requests;
+#endif
 
+#if REACTIVE_SHIM
+namespace OmronPlcRx.Reactive.Core.Responses;
+#else
 namespace OmronPlcRx.Core.Responses;
+#endif
 
 /// <summary>Represents the r ea dm em or ya re aw or dr es po ns e type.</summary>
 internal static class ReadMemoryAreaWordResponse

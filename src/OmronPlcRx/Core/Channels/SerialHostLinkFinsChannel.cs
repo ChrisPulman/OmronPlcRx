@@ -8,10 +8,19 @@ using System.Collections.Generic;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using CP.IO.Ports;
+#if REACTIVE_SHIM
+using OmronPlcRx.Reactive.Core.Results;
+using SerialPortRx = CP.IO.Ports.Reactive.SerialPortRx;
+#else
 using OmronPlcRx.Core.Results;
+using SerialPortRx = CP.IO.Ports.SerialPortRx;
+#endif
 
+#if REACTIVE_SHIM
+namespace OmronPlcRx.Reactive.Core.Channels;
+#else
 namespace OmronPlcRx.Core.Channels;
+#endif
 
 /// <summary>Represents the s er ia lh os tl in kf in sc ha nn el type.</summary>
 internal sealed class SerialHostLinkFinsChannel : BaseChannel

@@ -4,7 +4,11 @@
 
 using System;
 
+#if REACTIVE_SHIM
+namespace OmronPlcRx.Reactive.Tags;
+#else
 namespace OmronPlcRx.Tags;
+#endif
 
 /// <summary>Represents a typed PLC tag binding.</summary>
 /// <typeparam name="T">The data type.</typeparam>
