@@ -5,13 +5,25 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+#if REACTIVE_SHIM
+using OmronPlcRx.Reactive.Core.Channels;
+using OmronPlcRx.Reactive.Core.Requests;
+using OmronPlcRx.Reactive.Core.Responses;
+using OmronPlcRx.Reactive.Enums;
+using OmronPlcRx.Reactive.Results;
+#else
 using OmronPlcRx.Core.Channels;
 using OmronPlcRx.Core.Requests;
 using OmronPlcRx.Core.Responses;
 using OmronPlcRx.Enums;
 using OmronPlcRx.Results;
+#endif
 
+#if REACTIVE_SHIM
+namespace OmronPlcRx.Reactive.Core;
+#else
 namespace OmronPlcRx.Core;
+#endif
 
 /// <summary>High-level Omron PLC client facilitating initialization and FINS read/write operations over TCP/UDP.</summary>
 internal sealed class OmronPLCConnection : IDisposable
@@ -66,6 +78,61 @@ internal sealed class OmronPLCConnection : IDisposable
             ConnectionMethod.UDP => new UDPChannel(RemoteHost, Port),
             _ => new TCPChannel(RemoteHost, Port),
         };
+    }
+
+    /// <summary>Initializes a new instance of the <see cref="OmronPLCConnection"/> class using an injected channel.</summary>
+    /// <param name="localNodeId">The local FINS node identifier.</param>
+    /// <param name="remoteNodeId">The remote PLC FINS node identifier.</param>
+    /// <param name="connectionMethod">The connection method.</param>
+    /// <param name="remoteHost">The remote host.</param>
+    /// <param name="channel">The injected channel.</param>
+    /// <param name="port">The network port.</param>
+    /// <param name="timeout">The timeout.</param>
+    /// <param name="retries">The retry count.</param>
+    /// <param name="plcType">The PLC type to use for validation.</param>
+    /// <param name="controllerModel">The controller model.</param>
+    /// <param name="controllerVersion">The controller version.</param>
+    /// <param name="isInitialized">A value indicating whether the connection starts initialized.</param>
+    internal OmronPLCConnection(
+        byte localNodeId,
+        byte remoteNodeId,
+        ConnectionMethod connectionMethod,
+        string remoteHost,
+        BaseChannel channel,
+        int port = 9600,
+        int timeout = 2000,
+        int retries = 1,
+        PLCType plcType = PLCType.Unknown,
+        string? controllerModel = null,
+        string? controllerVersion = null,
+        bool isInitialized = true)
+    {
+        OmronPLCConnectionMetadata.ValidateNodeIdentifiers(localNodeId, remoteNodeId, connectionMethod);
+        LocalNodeID = localNodeId;
+        RemoteNodeID = remoteNodeId;
+        ConnectionMethod = connectionMethod;
+        RemoteHost = OmronPLCConnectionMetadata.ValidateRemoteHost(remoteHost);
+        OmronPLCConnectionMetadata.ValidatePort(connectionMethod, port);
+        Port = connectionMethod == ConnectionMethod.Serial ? 0 : port;
+
+        if (timeout <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(timeout), "The Timeout Value cannot be less than 1");
+        }
+
+        Timeout = timeout;
+
+        if (retries < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(retries), "The Retries Value cannot be Negative");
+        }
+
+        Retries = retries;
+        Channel = channel ?? throw new ArgumentNullException(nameof(channel));
+        PLCType = plcType;
+        ControllerModel = controllerModel;
+        ControllerVersion = controllerVersion;
+        _isInitialized = isInitialized;
     }
 
     /// <summary>Gets the local node id value.</summary>

@@ -4,7 +4,11 @@
 
 using System;
 
+#if REACTIVE_SHIM
+namespace OmronPlcRx.Reactive;
+#else
 namespace OmronPlcRx;
+#endif
 
 /// <summary>Encodes and decodes Omron Toolbus serial frames carrying binary FINS messages.</summary>
 public static class ToolbusFinsFrameCodec

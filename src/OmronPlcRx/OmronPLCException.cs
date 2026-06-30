@@ -4,7 +4,11 @@
 
 using System;
 
+#if REACTIVE_SHIM
+namespace OmronPlcRx.Reactive;
+#else
 namespace OmronPlcRx;
+#endif
 
 /// <summary>Represents errors that occur during Omron PLC communication or processing.</summary>
 public class OmronPLCException : Exception

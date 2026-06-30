@@ -3,9 +3,17 @@
 // See the LICENSE file in the project root for full license information.
 
 using System;
+#if REACTIVE_SHIM
+using OmronPlcRx.Reactive.Enums;
+#else
 using OmronPlcRx.Enums;
+#endif
 
+#if REACTIVE_SHIM
+namespace OmronPlcRx.Reactive.Core;
+#else
 namespace OmronPlcRx.Core;
+#endif
 
 /// <summary>Provides validation and metadata helpers for PLC connections.</summary>
 internal static class OmronPLCConnectionMetadata

@@ -5,12 +5,22 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+#if REACTIVE_SHIM
+using OmronPlcRx.Reactive.Enums;
+using OmronPlcRx.Reactive.Results;
+using OmronPlcRx.Reactive.Tags;
+#else
 using OmronPlcRx.Enums;
 using OmronPlcRx.Results;
 using OmronPlcRx.Tags;
+#endif
 using ReactiveUI.Primitives.Disposables;
 
+#if REACTIVE_SHIM
+namespace OmronPlcRx.Reactive;
+#else
 namespace OmronPlcRx;
+#endif
 
 /// <summary>Defines high-level Omron PLC operations and tag access.</summary>
 public interface IOmronPlcRx : IsDisposed

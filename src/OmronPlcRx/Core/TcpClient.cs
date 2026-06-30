@@ -8,7 +8,11 @@ using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 
+#if REACTIVE_SHIM
+namespace OmronPlcRx.Reactive.Core;
+#else
 namespace OmronPlcRx.Core;
+#endif
 
 /// <summary>
 /// TCP socket client wrapper providing connect, send and receive operations with timeout and cancellation support across multiple target frameworks.

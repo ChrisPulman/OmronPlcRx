@@ -6,7 +6,11 @@ using System;
 using System.Globalization;
 using System.Text;
 
+#if REACTIVE_SHIM
+namespace OmronPlcRx.Reactive;
+#else
 namespace OmronPlcRx;
+#endif
 
 /// <summary>Encodes and decodes Omron FINS frames carried in Host Link serial frames.</summary>
 public sealed class HostLinkFinsFrameCodec

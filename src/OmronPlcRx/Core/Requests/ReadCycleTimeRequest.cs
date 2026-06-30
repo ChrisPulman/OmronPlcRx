@@ -3,9 +3,17 @@
 // See the LICENSE file in the project root for full license information.
 
 using System.Collections.Generic;
+#if REACTIVE_SHIM
+using OmronPlcRx.Reactive.Core.Enums;
+#else
 using OmronPlcRx.Core.Enums;
+#endif
 
+#if REACTIVE_SHIM
+namespace OmronPlcRx.Reactive.Core.Requests;
+#else
 namespace OmronPlcRx.Core.Requests;
+#endif
 
 /// <summary>Represents the r ea dc yc le ti me re qu es t type.</summary>
 internal sealed class ReadCycleTimeRequest : FINSRequest

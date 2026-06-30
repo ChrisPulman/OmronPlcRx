@@ -7,12 +7,23 @@ using System.Collections.Generic;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+#if REACTIVE_SHIM
+using OmronPlcRx.Reactive.Core;
+using OmronPlcRx.Reactive.Core.Converters;
+using OmronPlcRx.Reactive.Core.Types;
+using OmronPlcRx.Reactive.Enums;
+#else
 using OmronPlcRx.Core;
 using OmronPlcRx.Core.Converters;
 using OmronPlcRx.Core.Types;
 using OmronPlcRx.Enums;
+#endif
 
+#if REACTIVE_SHIM
+namespace OmronPlcRx.Reactive;
+#else
 namespace OmronPlcRx;
+#endif
 
 /// <summary>Converts tag values to and from PLC word representations.</summary>
 internal static class PlcTagValueCodec

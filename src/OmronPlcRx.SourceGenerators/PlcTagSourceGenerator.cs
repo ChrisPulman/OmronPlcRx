@@ -19,8 +19,12 @@ namespace OmronPlcRx.SourceGenerators;
 [Generator]
 public sealed class PlcTagSourceGenerator : ISourceGenerator
 {
-    /// <summary>Metadata name for the PLC tag attribute consumed by this generator.</summary>
-    private const string AttributeMetadataName = "OmronPlcRx.PlcTagAttribute";
+    /// <summary>Metadata names for PLC tag attributes consumed by this generator.</summary>
+    private static readonly string[] AttributeMetadataNames =
+    [
+        "OmronPlcRx.PlcTagAttribute",
+        "OmronPlcRx.Reactive.PlcTagAttribute",
+    ];
 
     /// <summary>Format used when generated code needs a fully qualified type name.</summary>
     private static readonly SymbolDisplayFormat FullyQualifiedFormat = SymbolDisplayFormat.FullyQualifiedFormat;
@@ -75,45 +79,63 @@ public sealed class PlcTagSourceGenerator : ISourceGenerator
             return;
         }
 
-        var attributeSymbol = context.Compilation.GetTypeByMetadataName(AttributeMetadataName);
-        if (attributeSymbol is null)
+        var attributeSymbols = ResolvePlcTagAttributeSymbols(context.Compilation);
+        if (attributeSymbols.Count == 0)
         {
             return;
         }
 
         var targets = new Dictionary<INamedTypeSymbol, List<TagField>>(SymbolEqualityComparer.Default);
-        CollectTargets(context, receiver.CandidateFields, attributeSymbol, targets);
+        CollectTargets(context, receiver.CandidateFields, attributeSymbols, targets);
         AddGeneratedSources(context, targets);
+    }
+
+    /// <summary>Resolves PLC tag attribute symbols available in the current compilation.</summary>
+    /// <param name="compilation">Current compilation.</param>
+    /// <returns>The resolved PLC tag attribute symbols.</returns>
+    private static List<INamedTypeSymbol> ResolvePlcTagAttributeSymbols(Compilation compilation)
+    {
+        var symbols = new List<INamedTypeSymbol>(AttributeMetadataNames.Length);
+        foreach (var metadataName in AttributeMetadataNames)
+        {
+            var symbol = compilation.GetTypeByMetadataName(metadataName);
+            if (symbol is not null)
+            {
+                symbols.Add(symbol);
+            }
+        }
+
+        return symbols;
     }
 
     /// <summary>Collects all valid PLC tag fields grouped by containing type.</summary>
     /// <param name="context">Current generator execution context.</param>
     /// <param name="fieldDeclarations">Field declarations collected by the syntax receiver.</param>
-    /// <param name="attributeSymbol">Resolved PLC tag attribute symbol.</param>
+    /// <param name="attributeSymbols">Resolved PLC tag attribute symbols.</param>
     /// <param name="targets">Target map to populate.</param>
     private static void CollectTargets(
         GeneratorExecutionContext context,
         IEnumerable<FieldDeclarationSyntax> fieldDeclarations,
-        INamedTypeSymbol attributeSymbol,
+        IReadOnlyCollection<INamedTypeSymbol> attributeSymbols,
         Dictionary<INamedTypeSymbol, List<TagField>> targets)
     {
         foreach (var fieldDeclaration in fieldDeclarations)
         {
             var semanticModel = context.Compilation.GetSemanticModel(fieldDeclaration.SyntaxTree);
-            CollectFields(context, semanticModel, attributeSymbol, fieldDeclaration, targets);
+            CollectFields(context, semanticModel, attributeSymbols, fieldDeclaration, targets);
         }
     }
 
     /// <summary>Collects valid PLC tags from one field declaration.</summary>
     /// <param name="context">Current generator execution context.</param>
     /// <param name="semanticModel">Semantic model for the field declaration.</param>
-    /// <param name="attributeSymbol">Resolved PLC tag attribute symbol.</param>
+    /// <param name="attributeSymbols">Resolved PLC tag attribute symbols.</param>
     /// <param name="fieldDeclaration">Field declaration to inspect.</param>
     /// <param name="targets">Target map to populate.</param>
     private static void CollectFields(
         GeneratorExecutionContext context,
         SemanticModel semanticModel,
-        INamedTypeSymbol attributeSymbol,
+        IReadOnlyCollection<INamedTypeSymbol> attributeSymbols,
         FieldDeclarationSyntax fieldDeclaration,
         Dictionary<INamedTypeSymbol, List<TagField>> targets)
     {
@@ -121,7 +143,7 @@ public sealed class PlcTagSourceGenerator : ISourceGenerator
         {
             if (TryCreateTagField(
                 semanticModel,
-                attributeSymbol,
+                attributeSymbols,
                 variable,
                 out var containingType,
                 out var tagField,
@@ -155,7 +177,7 @@ public sealed class PlcTagSourceGenerator : ISourceGenerator
 
     /// <summary>Creates a tag field model for one attributed variable.</summary>
     /// <param name="semanticModel">Semantic model used to resolve the field symbol.</param>
-    /// <param name="attributeSymbol">Resolved PLC tag attribute symbol.</param>
+    /// <param name="attributeSymbols">Resolved PLC tag attribute symbols.</param>
     /// <param name="variable">Variable declarator to inspect.</param>
     /// <param name="containingType">Containing type when a tag field is created.</param>
     /// <param name="tagField">Created tag field model.</param>
@@ -163,7 +185,7 @@ public sealed class PlcTagSourceGenerator : ISourceGenerator
     /// <returns>True when a valid tag field was created; otherwise false.</returns>
     private static bool TryCreateTagField(
         SemanticModel semanticModel,
-        INamedTypeSymbol attributeSymbol,
+        IReadOnlyCollection<INamedTypeSymbol> attributeSymbols,
         VariableDeclaratorSyntax variable,
         out INamedTypeSymbol? containingType,
         out TagField? tagField,
@@ -178,7 +200,7 @@ public sealed class PlcTagSourceGenerator : ISourceGenerator
             return false;
         }
 
-        var attributeData = GetPlcTagAttribute(fieldSymbol, attributeSymbol);
+        var attributeData = GetPlcTagAttribute(fieldSymbol, attributeSymbols);
         if (attributeData is null)
         {
             return false;
@@ -198,15 +220,18 @@ public sealed class PlcTagSourceGenerator : ISourceGenerator
 
     /// <summary>Finds the PLC tag attribute instance on a field symbol.</summary>
     /// <param name="fieldSymbol">Field symbol to inspect.</param>
-    /// <param name="attributeSymbol">Resolved PLC tag attribute symbol.</param>
+    /// <param name="attributeSymbols">Resolved PLC tag attribute symbols.</param>
     /// <returns>The matching attribute data when present; otherwise null.</returns>
-    private static AttributeData? GetPlcTagAttribute(IFieldSymbol fieldSymbol, INamedTypeSymbol attributeSymbol)
+    private static AttributeData? GetPlcTagAttribute(IFieldSymbol fieldSymbol, IReadOnlyCollection<INamedTypeSymbol> attributeSymbols)
     {
         foreach (var attribute in fieldSymbol.GetAttributes())
         {
-            if (SymbolEqualityComparer.Default.Equals(attribute.AttributeClass, attributeSymbol))
+            foreach (var attributeSymbol in attributeSymbols)
             {
-                return attribute;
+                if (SymbolEqualityComparer.Default.Equals(attribute.AttributeClass, attributeSymbol))
+                {
+                    return attribute;
+                }
             }
         }
 
@@ -334,11 +359,13 @@ public sealed class PlcTagSourceGenerator : ISourceGenerator
         }
 
         var indent = namespaceName is null ? string.Empty : "    ";
+        var plcFacadeType = GetPlcFacadeType(containingType);
+        var observableAsyncBridgeType = GetObservableAsyncBridgeType(containingType);
         AppendTypeStart(builder, indent, containingType);
-        AppendProperties(builder, indent, fields);
-        AppendRegisterMethod(builder, indent + "    ", fields);
-        AppendBindMethod(builder, indent + "    ", fields);
-        AppendWriteMethods(builder, indent, fields);
+        AppendProperties(builder, indent, fields, observableAsyncBridgeType);
+        AppendRegisterMethod(builder, indent + "    ", fields, plcFacadeType);
+        AppendBindMethod(builder, indent + "    ", fields, plcFacadeType);
+        AppendWriteMethods(builder, indent, fields, plcFacadeType);
         AppendLine(builder, indent + "}");
 
         if (namespaceName is not null)
@@ -347,6 +374,37 @@ public sealed class PlcTagSourceGenerator : ISourceGenerator
         }
 
         return builder.ToString();
+    }
+
+    /// <summary>Gets the generated PLC facade type for the target namespace.</summary>
+    /// <param name="containingType">Type receiving generated PLC members.</param>
+    /// <returns>The fully qualified PLC facade type name.</returns>
+    private static string GetPlcFacadeType(INamedTypeSymbol containingType) =>
+        IsReactiveNamespace(containingType)
+            ? "global::OmronPlcRx.Reactive.IOmronPlcRx"
+            : "global::OmronPlcRx.IOmronPlcRx";
+
+    /// <summary>Gets the observable-to-async bridge type for the target namespace.</summary>
+    /// <param name="containingType">Type receiving generated PLC members.</param>
+    /// <returns>The fully qualified bridge type name.</returns>
+    private static string GetObservableAsyncBridgeType(INamedTypeSymbol containingType) =>
+        IsReactiveNamespace(containingType)
+            ? "global::CP.IO.Ports.Reactive.ObservableAsyncBridgeExtensions"
+            : "global::CP.IO.Ports.ObservableAsyncBridgeExtensions";
+
+    /// <summary>Determines whether generated code targets the reactive package namespace.</summary>
+    /// <param name="containingType">Type receiving generated PLC members.</param>
+    /// <returns>True when the containing type lives under <c>OmronPlcRx.Reactive</c>.</returns>
+    private static bool IsReactiveNamespace(INamedTypeSymbol containingType)
+    {
+        if (containingType.ContainingNamespace.IsGlobalNamespace)
+        {
+            return false;
+        }
+
+        var namespaceName = containingType.ContainingNamespace.ToDisplayString();
+        return namespaceName == "OmronPlcRx.Reactive" ||
+            namespaceName.StartsWith("OmronPlcRx.Reactive.", StringComparison.Ordinal);
     }
 
     /// <summary>Appends generated source header and using directives.</summary>
@@ -382,11 +440,12 @@ public sealed class PlcTagSourceGenerator : ISourceGenerator
     /// <param name="builder">String builder receiving source text.</param>
     /// <param name="indent">Target type indentation.</param>
     /// <param name="fields">Collected tag fields.</param>
-    private static void AppendProperties(StringBuilder builder, string indent, IReadOnlyList<TagField> fields)
+    /// <param name="observableAsyncBridgeType">Fully qualified observable-to-async bridge type.</param>
+    private static void AppendProperties(StringBuilder builder, string indent, IReadOnlyList<TagField> fields, string observableAsyncBridgeType)
     {
         foreach (var field in fields)
         {
-            AppendProperty(builder, indent + "    ", field);
+            AppendProperty(builder, indent + "    ", field, observableAsyncBridgeType);
         }
     }
 
@@ -394,13 +453,14 @@ public sealed class PlcTagSourceGenerator : ISourceGenerator
     /// <param name="builder">String builder receiving source text.</param>
     /// <param name="indent">Target type indentation.</param>
     /// <param name="fields">Collected tag fields.</param>
-    private static void AppendWriteMethods(StringBuilder builder, string indent, IReadOnlyList<TagField> fields)
+    /// <param name="plcFacadeType">Fully qualified PLC facade type.</param>
+    private static void AppendWriteMethods(StringBuilder builder, string indent, IReadOnlyList<TagField> fields, string plcFacadeType)
     {
         foreach (var field in fields)
         {
             if (field.Writable)
             {
-                AppendWriteMethod(builder, indent + "    ", field);
+                AppendWriteMethod(builder, indent + "    ", field, plcFacadeType);
             }
         }
     }
@@ -409,7 +469,8 @@ public sealed class PlcTagSourceGenerator : ISourceGenerator
     /// <param name="builder">String builder receiving source text.</param>
     /// <param name="indent">Current indentation.</param>
     /// <param name="field">Tag field to emit.</param>
-    private static void AppendProperty(StringBuilder builder, string indent, TagField field)
+    /// <param name="observableAsyncBridgeType">Fully qualified observable-to-async bridge type.</param>
+    private static void AppendProperty(StringBuilder builder, string indent, TagField field, string observableAsyncBridgeType)
     {
         Append(builder, indent);
         Append(builder, "private readonly global::ReactiveUI.Primitives.Signals.BehaviorSignal<");
@@ -435,7 +496,7 @@ public sealed class PlcTagSourceGenerator : ISourceGenerator
         AppendLine(builder, indent + "    }");
         AppendLine(builder, indent + "}");
         AppendLine(builder);
-        AppendObservableProperties(builder, indent, field);
+        AppendObservableProperties(builder, indent, field, observableAsyncBridgeType);
         Append(builder, indent);
         Append(builder, "partial void On");
         Append(builder, field.PropertyName);
@@ -477,7 +538,8 @@ public sealed class PlcTagSourceGenerator : ISourceGenerator
     /// <param name="builder">String builder receiving source text.</param>
     /// <param name="indent">Current indentation.</param>
     /// <param name="field">Tag field to emit.</param>
-    private static void AppendObservableProperties(StringBuilder builder, string indent, TagField field)
+    /// <param name="observableAsyncBridgeType">Fully qualified observable-to-async bridge type.</param>
+    private static void AppendObservableProperties(StringBuilder builder, string indent, TagField field, string observableAsyncBridgeType)
     {
         Append(builder, indent);
         Append(builder, "public global::System.IObservable<");
@@ -495,7 +557,8 @@ public sealed class PlcTagSourceGenerator : ISourceGenerator
         Append(builder, "> ");
         Append(builder, field.PropertyName);
         Append(builder, "ObservableAsync => ");
-        Append(builder, "global::CP.IO.Ports.ObservableAsyncBridgeExtensions.ToObservableAsync(");
+        Append(builder, observableAsyncBridgeType);
+        Append(builder, ".ToObservableAsync(");
         Append(builder, field.PropertyName);
         AppendLine(builder, "Observable);");
         AppendLine(builder, "#endif");
@@ -506,9 +569,10 @@ public sealed class PlcTagSourceGenerator : ISourceGenerator
     /// <param name="builder">String builder receiving source text.</param>
     /// <param name="indent">Current indentation.</param>
     /// <param name="fields">Collected tag fields.</param>
-    private static void AppendRegisterMethod(StringBuilder builder, string indent, IEnumerable<TagField> fields)
+    /// <param name="plcFacadeType">Fully qualified PLC facade type.</param>
+    private static void AppendRegisterMethod(StringBuilder builder, string indent, IEnumerable<TagField> fields, string plcFacadeType)
     {
-        AppendLine(builder, indent + "public void RegisterPlcTags(global::OmronPlcRx.IOmronPlcRx plc)");
+        AppendLine(builder, indent + "public void RegisterPlcTags(" + plcFacadeType + " plc)");
         AppendLine(builder, indent + "{");
         AppendNullGuard(builder, indent, "plc");
         AppendLine(builder);
@@ -545,9 +609,10 @@ public sealed class PlcTagSourceGenerator : ISourceGenerator
     /// <param name="builder">String builder receiving source text.</param>
     /// <param name="indent">Current indentation.</param>
     /// <param name="fields">Collected tag fields.</param>
-    private static void AppendBindMethod(StringBuilder builder, string indent, IEnumerable<TagField> fields)
+    /// <param name="plcFacadeType">Fully qualified PLC facade type.</param>
+    private static void AppendBindMethod(StringBuilder builder, string indent, IEnumerable<TagField> fields, string plcFacadeType)
     {
-        AppendLine(builder, indent + "public global::System.IDisposable BindPlcTags(global::OmronPlcRx.IOmronPlcRx plc)");
+        AppendLine(builder, indent + "public global::System.IDisposable BindPlcTags(" + plcFacadeType + " plc)");
         AppendLine(builder, indent + "{");
         AppendNullGuard(builder, indent, "plc");
         AppendLine(builder);
@@ -592,12 +657,15 @@ public sealed class PlcTagSourceGenerator : ISourceGenerator
     /// <param name="builder">String builder receiving source text.</param>
     /// <param name="indent">Current indentation.</param>
     /// <param name="field">Writable tag field.</param>
-    private static void AppendWriteMethod(StringBuilder builder, string indent, TagField field)
+    /// <param name="plcFacadeType">Fully qualified PLC facade type.</param>
+    private static void AppendWriteMethod(StringBuilder builder, string indent, TagField field, string plcFacadeType)
     {
         Append(builder, indent);
         Append(builder, "public void Write");
         Append(builder, field.PropertyName);
-        Append(builder, "(global::OmronPlcRx.IOmronPlcRx plc, ");
+        Append(builder, "(");
+        Append(builder, plcFacadeType);
+        Append(builder, " plc, ");
         Append(builder, field.PropertyType);
         AppendLine(builder, " value)");
         AppendLine(builder, indent + "{");
@@ -705,7 +773,11 @@ public sealed class PlcTagSourceGenerator : ISourceGenerator
             "global::OmronPlcRx.Core.Types.Bcd16" or
             "global::OmronPlcRx.Core.Types.BcdU16" or
             "global::OmronPlcRx.Core.Types.Bcd32" or
-            "global::OmronPlcRx.Core.Types.BcdU32";
+            "global::OmronPlcRx.Core.Types.BcdU32" or
+            "global::OmronPlcRx.Reactive.Core.Types.Bcd16" or
+            "global::OmronPlcRx.Reactive.Core.Types.BcdU16" or
+            "global::OmronPlcRx.Reactive.Core.Types.Bcd32" or
+            "global::OmronPlcRx.Reactive.Core.Types.BcdU32";
     }
 
     /// <summary>Determines whether a generated property would collide with an existing member.</summary>

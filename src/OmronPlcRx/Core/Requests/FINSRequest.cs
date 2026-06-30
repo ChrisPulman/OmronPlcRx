@@ -4,9 +4,17 @@
 
 using System;
 using System.Collections.Generic;
+#if REACTIVE_SHIM
+using OmronPlcRx.Reactive.Core.Channels;
+#else
 using OmronPlcRx.Core.Channels;
+#endif
 
+#if REACTIVE_SHIM
+namespace OmronPlcRx.Reactive.Core.Requests;
+#else
 namespace OmronPlcRx.Core.Requests;
+#endif
 
 /// <summary>Represents the f in sr eq ue st type.</summary>
 internal abstract class FINSRequest

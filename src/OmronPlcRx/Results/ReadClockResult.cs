@@ -4,7 +4,11 @@
 
 using System;
 
+#if REACTIVE_SHIM
+namespace OmronPlcRx.Reactive.Results;
+#else
 namespace OmronPlcRx.Results;
+#endif
 
 /// <summary>Result of a Read Clock operation.</summary>
 public readonly record struct ReadClockResult

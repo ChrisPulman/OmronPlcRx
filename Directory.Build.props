@@ -56,7 +56,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!--<Compile Update="**\*.cs" DependentUpon="I%(Filename).cs" />-->
     <PackageReference Include="StyleSharp.Analyzers" Version="3.13.4" PrivateAssets="all"/>
     <PackageReference Include="Roslynator.Analyzers" Version="4.15.0" PrivateAssets="All" />
   </ItemGroup>

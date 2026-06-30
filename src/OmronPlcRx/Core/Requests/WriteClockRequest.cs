@@ -4,10 +4,19 @@
 
 using System;
 using System.Collections.Generic;
+#if REACTIVE_SHIM
+using OmronPlcRx.Reactive.Core.Converters;
+using OmronPlcRx.Reactive.Core.Enums;
+#else
 using OmronPlcRx.Core.Converters;
 using OmronPlcRx.Core.Enums;
+#endif
 
+#if REACTIVE_SHIM
+namespace OmronPlcRx.Reactive.Core.Requests;
+#else
 namespace OmronPlcRx.Core.Requests;
+#endif
 
 /// <summary>Represents the w ri te cl oc kr eq ue st type.</summary>
 internal sealed class WriteClockRequest : FINSRequest

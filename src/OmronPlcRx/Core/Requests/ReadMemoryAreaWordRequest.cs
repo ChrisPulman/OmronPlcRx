@@ -4,10 +4,19 @@
 
 using System;
 using System.Collections.Generic;
+#if REACTIVE_SHIM
+using OmronPlcRx.Reactive.Core.Enums;
+using OmronPlcRx.Reactive.Enums;
+#else
 using OmronPlcRx.Core.Enums;
 using OmronPlcRx.Enums;
+#endif
 
+#if REACTIVE_SHIM
+namespace OmronPlcRx.Reactive.Core.Requests;
+#else
 namespace OmronPlcRx.Core.Requests;
+#endif
 
 /// <summary>Represents the r ea dm em or ya re aw or dr eq ue st type.</summary>
 internal sealed class ReadMemoryAreaWordRequest : FINSRequest

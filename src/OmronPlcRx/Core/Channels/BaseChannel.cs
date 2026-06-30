@@ -5,11 +5,21 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+#if REACTIVE_SHIM
+using OmronPlcRx.Reactive.Core.Requests;
+using OmronPlcRx.Reactive.Core.Responses;
+using OmronPlcRx.Reactive.Core.Results;
+#else
 using OmronPlcRx.Core.Requests;
 using OmronPlcRx.Core.Responses;
 using OmronPlcRx.Core.Results;
+#endif
 
+#if REACTIVE_SHIM
+namespace OmronPlcRx.Reactive.Core.Channels;
+#else
 namespace OmronPlcRx.Core.Channels;
+#endif
 
 /// <summary>Represents the b as ec ha nn el type.</summary>
 internal abstract class BaseChannel : IDisposable

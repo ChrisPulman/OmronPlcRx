@@ -6,7 +6,11 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
+#if REACTIVE_SHIM
+namespace OmronPlcRx.Reactive.Core.Responses;
+#else
 namespace OmronPlcRx.Core.Responses;
+#endif
 
 /// <summary>Represents the r ea dc pu un it da ta re sp on se type.</summary>
 internal static class ReadCPUUnitDataResponse

@@ -4,7 +4,11 @@
 
 using System;
 
+#if REACTIVE_SHIM
+namespace OmronPlcRx.Reactive.Core.Results;
+#else
 namespace OmronPlcRx.Core.Results;
+#endif
 
 /// <summary>Represents the r ec ei ve me ss ag er es ul t type.</summary>
 internal readonly record struct ReceiveMessageResult

@@ -5,7 +5,11 @@
 using System;
 using System.IO.Ports;
 
+#if REACTIVE_SHIM
+namespace OmronPlcRx.Reactive;
+#else
 namespace OmronPlcRx;
+#endif
 
 /// <summary>Gets or sets the omron serial options value.</summary>
 public sealed record OmronSerialOptions
