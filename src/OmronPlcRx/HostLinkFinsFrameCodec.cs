@@ -1,5 +1,6 @@
-// Copyright (c) Chris Pulman. All rights reserved.
-// Licensed under the MIT license. See LICENSE file in the project root for full license information.
+// Copyright (c) 2022-2026 Chris Pulman. All rights reserved.
+// Chris Pulman licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for full license information.
 
 using System;
 using System.Globalization;
@@ -10,8 +11,10 @@ namespace OmronPlcRx;
 /// <summary>Encodes and decodes Omron FINS frames carried in Host Link serial frames.</summary>
 public sealed class HostLinkFinsFrameCodec
 {
+    /// <summary>Stores the h ea de rc od e value.</summary>
     private const string HeaderCode = "FA";
 
+    /// <summary>Stores the o pt io ns value.</summary>
     private readonly OmronSerialOptions _options;
 
     /// <summary>Initializes a new instance of the <see cref="HostLinkFinsFrameCodec"/> class.</summary>
@@ -95,9 +98,9 @@ public sealed class HostLinkFinsFrameCodec
             throw new OmronPLCException("The Host Link FINS response was too short.");
         }
 
-        var withoutTerminator = frame.Substring(0, frame.Length - 2);
-        var body = withoutTerminator.Substring(0, withoutTerminator.Length - 2);
-        var receivedFcs = withoutTerminator.Substring(withoutTerminator.Length - 2, 2);
+        var withoutTerminator = frame[..^2];
+        var body = withoutTerminator[..^2];
+        var receivedFcs = withoutTerminator[^2..];
         var expectedFcs = CalculateFcs(body);
         if (!string.Equals(receivedFcs, expectedFcs, StringComparison.OrdinalIgnoreCase))
         {
@@ -109,34 +112,40 @@ public sealed class HostLinkFinsFrameCodec
             throw new OmronPLCException("The Host Link FINS response did not start with '@'.");
         }
 
-        var unit = body.Substring(1, 2);
+        var unit = body[1..3];
         var expectedUnit = _options.HostLinkUnitNumber.ToString("D2", CultureInfo.InvariantCulture);
         if (!string.Equals(unit, expectedUnit, StringComparison.Ordinal))
         {
             throw new OmronPLCException($"The Host Link FINS response unit number '{unit}' did not match expected unit '{expectedUnit}'.");
         }
 
-        var headerCode = body.Substring(3, 2);
+        var headerCode = body[3..5];
         if (!string.Equals(headerCode, HeaderCode, StringComparison.OrdinalIgnoreCase))
         {
             throw new OmronPLCException($"The Host Link FINS response header code '{headerCode}' was invalid.");
         }
 
         const int payloadStart = 5;
-        var hostLinkEndCode = body.Substring(payloadStart, 2);
+        var hostLinkEndCode = body[payloadStart..(payloadStart + 2)];
         if (!string.Equals(hostLinkEndCode, "00", StringComparison.OrdinalIgnoreCase))
         {
             throw new OmronPLCException($"The Host Link FINS response end code was not normal completion: '{hostLinkEndCode}'.");
         }
 
-        var payload = body.Substring(payloadStart + 2);
+        var payload = body[(payloadStart + 2)..];
         return _options.FrameMode == OmronHostLinkFinsFrameMode.Direct
             ? DecodeDirectResponse(payload)
             : DecodeNetworkResponse(payload);
     }
 
+    /// <summary>Initializes a new instance of the <see cref="DecodeNetworkResponse"/> class.</summary>
+    /// <param name="payload">The p ay lo ad value.</param>
+    /// <returns>The result produced by the operation.</returns>
     private static Memory<byte> DecodeNetworkResponse(string payload) => FromHex(payload);
 
+    /// <summary>Initializes a new instance of the <see cref="DecodeDirectResponse"/> class.</summary>
+    /// <param name="payload">The p ay lo ad value.</param>
+    /// <returns>The result produced by the operation.</returns>
     private static Memory<byte> DecodeDirectResponse(string payload)
     {
         if (payload.Length < 16)
@@ -148,7 +157,7 @@ public sealed class HostLinkFinsFrameCodec
         var da2 = ParseByte(payload, 2);
         var sa2 = ParseByte(payload, 4);
         var sid = ParseByte(payload, 6);
-        var commandAndData = FromHex(payload.Remove(0, 8)).ToArray();
+        var commandAndData = FromHex(payload[8..]).ToArray();
         var message = new byte[10 + commandAndData.Length];
         message[0] = icf;
         message[1] = 0x00;
@@ -164,6 +173,11 @@ public sealed class HostLinkFinsFrameCodec
         return message;
     }
 
+    /// <summary>Initializes a new instance of the <see cref="ToHex"/> class.</summary>
+    /// <param name="bytes">The b yt es value.</param>
+    /// <param name="offset">The o ff se t value.</param>
+    /// <param name="count">The c ou nt value.</param>
+    /// <returns>The result produced by the operation.</returns>
     private static string ToHex(byte[] bytes, int offset, int count)
     {
         var builder = new StringBuilder(count * 2);
@@ -175,6 +189,9 @@ public sealed class HostLinkFinsFrameCodec
         return builder.ToString();
     }
 
+    /// <summary>Initializes a new instance of the <see cref="FromHex"/> class.</summary>
+    /// <param name="value">The v al ue value.</param>
+    /// <returns>The result produced by the operation.</returns>
     private static Memory<byte> FromHex(string value)
     {
         if (value.Length % 2 != 0)
@@ -191,5 +208,9 @@ public sealed class HostLinkFinsFrameCodec
         return bytes;
     }
 
-    private static byte ParseByte(string value, int startIndex) => byte.Parse(value.Substring(startIndex, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture);
+    /// <summary>Initializes a new instance of the <see cref="ParseByte"/> class.</summary>
+    /// <param name="value">The v al ue value.</param>
+    /// <param name="startIndex">The s ta rt in de x value.</param>
+    /// <returns>The result produced by the operation.</returns>
+    private static byte ParseByte(string value, int startIndex) => byte.Parse(value[startIndex..(startIndex + 2)], NumberStyles.HexNumber, CultureInfo.InvariantCulture);
 }

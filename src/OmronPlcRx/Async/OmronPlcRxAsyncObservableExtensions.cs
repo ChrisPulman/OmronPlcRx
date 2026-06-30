@@ -1,5 +1,6 @@
-// Copyright (c) Chris Pulman. All rights reserved.
-// Licensed under the MIT license. See LICENSE file in the project root for full license information.
+// Copyright (c) 2022-2026 Chris Pulman. All rights reserved.
+// Chris Pulman licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for full license information.
 
 using System;
 using System.Collections.Generic;
@@ -13,55 +14,56 @@ namespace OmronPlcRx.Async;
 /// <summary>Bridges Omron PLC classic Rx streams into ReactiveUI.Primitives.Async observables.</summary>
 public static class OmronPlcRxAsyncObservableExtensions
 {
-    /// <summary>Observes a typed PLC tag as an async observable.</summary>
-    /// <typeparam name="T">The tag value type.</typeparam>
+    /// <summary>Provides async observable members for an Omron PLC facade.</summary>
     /// <param name="plc">The PLC reactive facade.</param>
-    /// <param name="tagName">The registered tag name.</param>
-    /// <returns>An async observable that can use ReactiveUI.Primitives.Async operators.</returns>
-    public static IObservableAsync<T?> ObserveAsync<T>(this IOmronPlcRx plc, string? tagName)
+    extension(IOmronPlcRx plc)
     {
-        if (plc is null)
+        /// <summary>Observes a typed PLC tag as an async observable.</summary>
+        /// <typeparam name="T">The tag value type.</typeparam>
+        /// <param name="tagName">The registered tag name.</param>
+        /// <returns>An async observable that can use ReactiveUI.Primitives.Async operators.</returns>
+        public IObservableAsync<T?> ObserveAsAsyncObservable<T>(string? tagName)
         {
-            throw new ArgumentNullException(nameof(plc));
+            if (plc is null)
+            {
+                throw new ArgumentNullException(nameof(plc));
+            }
+
+            return plc.Observe<T>(tagName).ToObservableAsync();
         }
 
-        return plc.Observe<T>(tagName).ToObservableAsync();
-    }
-
-    /// <summary>Observes every changed PLC tag as an async observable.</summary>
-    /// <param name="plc">The PLC reactive facade.</param>
-    /// <returns>An async observable of all changed tags.</returns>
-    public static IObservableAsync<IPlcTag?> ObserveAllAsync(this IOmronPlcRx plc)
-    {
-        if (plc is null)
+        /// <summary>Observes every changed PLC tag as an async observable.</summary>
+        /// <returns>An async observable of all changed tags.</returns>
+        public IObservableAsync<IPlcTag?> ObserveAllAsAsyncObservable()
         {
-            throw new ArgumentNullException(nameof(plc));
+            if (plc is null)
+            {
+                throw new ArgumentNullException(nameof(plc));
+            }
+
+            return plc.ObserveAll.ToObservableAsync();
         }
 
-        return plc.ObserveAll.ToObservableAsync();
-    }
-
-    /// <summary>Observes PLC operational errors as an async observable.</summary>
-    /// <param name="plc">The PLC reactive facade.</param>
-    /// <returns>An async observable of PLC errors.</returns>
-    public static IObservableAsync<OmronPLCException?> ErrorsAsync(this IOmronPlcRx plc)
-    {
-        if (plc is null)
+        /// <summary>Observes PLC operational errors as an async observable.</summary>
+        /// <returns>An async observable of PLC errors.</returns>
+        public IObservableAsync<OmronPLCException?> ErrorsAsAsyncObservable()
         {
-            throw new ArgumentNullException(nameof(plc));
+            if (plc is null)
+            {
+                throw new ArgumentNullException(nameof(plc));
+            }
+
+            return plc.Errors.ToObservableAsync();
         }
 
-        return plc.Errors.ToObservableAsync();
+        /// <summary>Observes a typed PLC tag as an async enumerable.</summary>
+        /// <typeparam name="T">The tag value type.</typeparam>
+        /// <param name="tagName">The registered tag name.</param>
+        /// <param name="cancellationToken">Cancellation token for the async enumeration.</param>
+        /// <returns>An async enumerable of tag values.</returns>
+        public IAsyncEnumerable<T?> ObserveValuesAsync<T>(string? tagName, CancellationToken cancellationToken = default) =>
+            plc.ObserveAsAsyncObservable<T>(tagName)
+                .TakeUntil(cancellationToken)
+                .ToAsyncEnumerable(static () => System.Threading.Channels.Channel.CreateUnbounded<T?>());
     }
-
-    /// <summary>Observes a typed PLC tag as an async enumerable.</summary>
-    /// <typeparam name="T">The tag value type.</typeparam>
-    /// <param name="plc">The PLC reactive facade.</param>
-    /// <param name="tagName">The registered tag name.</param>
-    /// <param name="cancellationToken">Cancellation token for the async enumeration.</param>
-    /// <returns>An async enumerable of tag values.</returns>
-    public static IAsyncEnumerable<T?> ObserveValuesAsync<T>(this IOmronPlcRx plc, string? tagName, CancellationToken cancellationToken = default) =>
-        plc.ObserveAsync<T>(tagName)
-            .TakeUntil(cancellationToken)
-            .ToAsyncEnumerable(static () => System.Threading.Channels.Channel.CreateUnbounded<T?>());
 }

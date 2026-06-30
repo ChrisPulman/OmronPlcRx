@@ -168,46 +168,9 @@ internal sealed class SerialHostLinkFinsChannel : BaseChannel
         {
             while (_receivedBytes.TryDequeue(out var value))
             {
-                received.Add(value);
-
-                var frameStart = received.IndexOf(0xAB);
-                if (frameStart < 0)
+                if (TryCreateToolbusReceiveResult(received, value, out var result))
                 {
-                    received.Clear();
-                    continue;
-                }
-
-                if (frameStart > 0)
-                {
-                    received.RemoveRange(0, frameStart);
-                }
-
-                if (received.Count > _options.MaximumFrameLength)
-                {
-                    throw new OmronPLCException($"The serial Toolbus FINS response exceeded the configured maximum frame length {_options.MaximumFrameLength}.");
-                }
-
-                if (received.Count < 3)
-                {
-                    continue;
-                }
-
-                var declaredLength = (received[1] << 8) | received[2];
-                var totalLength = declaredLength + 3;
-                if (declaredLength < 2 || totalLength > _options.MaximumFrameLength)
-                {
-                    throw new OmronPLCException($"The serial Toolbus FINS response declared invalid frame length {declaredLength}.");
-                }
-
-                if (received.Count >= totalLength)
-                {
-                    var frame = received.GetRange(0, totalLength).ToArray();
-                    return new ReceiveMessageResult
-                    {
-                        Bytes = totalLength,
-                        Packets = 1,
-                        Message = ToolbusFinsFrameCodec.DecodeResponse(frame),
-                    };
+                    return result;
                 }
             }
 
@@ -274,28 +237,12 @@ internal sealed class SerialHostLinkFinsChannel : BaseChannel
         var nextSync = DateTime.MinValue;
         while (DateTime.UtcNow.Subtract(startTimestamp).TotalMilliseconds < timeout)
         {
-            if (DateTime.UtcNow >= nextSync)
-            {
-                _port.Write(sync, 0, sync.Length);
-                nextSync = DateTime.UtcNow.AddMilliseconds(250);
-            }
+            WriteSynchronizationFrameIfDue(sync, ref nextSync);
 
-            while (_receivedBytes.TryDequeue(out var value))
+            if (TryReadSynchronizationFrame(received, sync))
             {
-                received.Add(value);
-                if (received.Count > _options.MaximumFrameLength)
-                {
-                    received.RemoveAt(0);
-                }
-
-                for (var i = 0; i <= received.Count - sync.Length; i++)
-                {
-                    if (received[i] == sync[0] && received[i + 1] == sync[1])
-                    {
-                        ClearReceiveQueue();
-                        return;
-                    }
-                }
+                ClearReceiveQueue();
+                return;
             }
 
             await WaitForSerialDataAsync(startTimestamp, timeout, cancellationToken).ConfigureAwait(false);
@@ -353,6 +300,117 @@ internal sealed class SerialHostLinkFinsChannel : BaseChannel
         return totalRead;
     }
 
+    /// <summary>Attempts to decode a Toolbus response after receiving one byte.</summary>
+    /// <param name="received">The accumulated received bytes.</param>
+    /// <param name="value">The received byte.</param>
+    /// <param name="result">The decoded receive result.</param>
+    /// <returns>A value indicating whether a complete frame is available.</returns>
+    private bool TryCreateToolbusReceiveResult(List<byte> received, byte value, out ReceiveMessageResult result)
+    {
+        received.Add(value);
+        SerialToolbusFrameBuffer.TrimBeforeFrameStart(received);
+        if (received.Count == 0)
+        {
+            result = default!;
+            return false;
+        }
+
+        ValidateToolbusAccumulatedLength(received);
+        return TryDecodeCompleteToolbusFrame(received, out result);
+    }
+
+    /// <summary>Validates the accumulated Toolbus frame length.</summary>
+    /// <param name="received">The accumulated received bytes.</param>
+    private void ValidateToolbusAccumulatedLength(List<byte> received)
+    {
+        if (received.Count <= _options.MaximumFrameLength)
+        {
+            return;
+        }
+
+        throw new OmronPLCException($"The serial Toolbus FINS response exceeded the configured maximum frame length {_options.MaximumFrameLength}.");
+    }
+
+    /// <summary>Attempts to decode a complete Toolbus frame.</summary>
+    /// <param name="received">The accumulated received bytes.</param>
+    /// <param name="result">The decoded receive result.</param>
+    /// <returns>A value indicating whether a complete frame is available.</returns>
+    private bool TryDecodeCompleteToolbusFrame(List<byte> received, out ReceiveMessageResult result)
+    {
+        if (received.Count < 3)
+        {
+            result = default!;
+            return false;
+        }
+
+        var declaredLength = (received[1] << 8) | received[2];
+        var totalLength = declaredLength + 3;
+        if (declaredLength < 2 || totalLength > _options.MaximumFrameLength)
+        {
+            throw new OmronPLCException($"The serial Toolbus FINS response declared invalid frame length {declaredLength}.");
+        }
+
+        if (received.Count < totalLength)
+        {
+            result = default!;
+            return false;
+        }
+
+        var frame = received.GetRange(0, totalLength).ToArray();
+        result = new ReceiveMessageResult
+        {
+            Bytes = totalLength,
+            Packets = 1,
+            Message = ToolbusFinsFrameCodec.DecodeResponse(frame),
+        };
+        return true;
+    }
+
+    /// <summary>Writes a Toolbus synchronization frame when the cadence allows it.</summary>
+    /// <param name="sync">The synchronization frame.</param>
+    /// <param name="nextSync">The next permitted send time.</param>
+    private void WriteSynchronizationFrameIfDue(byte[] sync, ref DateTime nextSync)
+    {
+        if (DateTime.UtcNow < nextSync)
+        {
+            return;
+        }
+
+        _port?.Write(sync, 0, sync.Length);
+        nextSync = DateTime.UtcNow.AddMilliseconds(250);
+    }
+
+    /// <summary>Reads queued bytes until a Toolbus synchronization frame is found.</summary>
+    /// <param name="received">The accumulated received bytes.</param>
+    /// <param name="sync">The synchronization frame.</param>
+    /// <returns>A value indicating whether the synchronization frame was received.</returns>
+    private bool TryReadSynchronizationFrame(List<byte> received, byte[] sync)
+    {
+        while (_receivedBytes.TryDequeue(out var value))
+        {
+            received.Add(value);
+            TrimSynchronizationBuffer(received);
+            if (SerialToolbusFrameBuffer.ContainsSynchronizationFrame(received, sync))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>Trims the Toolbus synchronization buffer to the configured maximum frame length.</summary>
+    /// <param name="received">The accumulated received bytes.</param>
+    private void TrimSynchronizationBuffer(List<byte> received)
+    {
+        if (received.Count <= _options.MaximumFrameLength)
+        {
+            return;
+        }
+
+        received.RemoveAt(0);
+    }
+
     /// <summary>Initializes a new instance of the <see cref="GetHostLinkCodec"/> class.</summary>
     /// <returns>The result produced by the operation.</returns>
     private HostLinkFinsFrameCodec GetHostLinkCodec() => _hostLinkCodec ?? throw new OmronPLCException($"The serial Host Link FINS codec for '{RemoteHost}' is not initialized.");
@@ -375,8 +433,9 @@ internal sealed class SerialHostLinkFinsChannel : BaseChannel
     /// <summary>Initializes a new instance of the <see cref="ClearReceiveQueue"/> class.</summary>
     private void ClearReceiveQueue()
     {
-        while (_receivedBytes.TryDequeue(out _))
+        while (_receivedBytes.TryDequeue(out var discarded))
         {
+            _ = discarded;
         }
     }
 }

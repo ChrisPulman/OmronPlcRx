@@ -3,6 +3,7 @@
 // See the LICENSE file in the project root for full license information.
 
 using System;
+using System.Collections.Generic;
 using OmronPlcRx.Core.Enums;
 using OmronPlcRx.Core.Requests;
 
@@ -19,6 +20,83 @@ internal sealed class FINSResponse
 
     /// <summary>Stores the r es po ns ec od el en gt h value.</summary>
     internal const int ResponseCodeLength = 2;
+
+    /// <summary>Stores specific response code messages.</summary>
+    private static readonly Dictionary<int, string> ResponseCodeMessages = new()
+    {
+        [GetResponseCodeKey(0x00, 0x01)] = "Normal Completion (0x00) - Service was Canceled (0x01)",
+        [GetResponseCodeKey(0x01, 0x01)] = "Local Node Error (0x01) - The Local Node was not found within the Network (0x01)",
+        [GetResponseCodeKey(0x02, 0x01)] = "Destination Node Error (0x02) - The Destination Node was not found within the Network (0x01)",
+        [GetResponseCodeKey(0x02, 0x02)] = "Destination Node Error (0x02) - The Destination Unit could not be found (0x02)",
+        [GetResponseCodeKey(0x02, 0x04)] = "Destination Node Error (0x02) - The Destination Node was Busy (0x04)",
+        [GetResponseCodeKey(0x02, 0x05)] = "Destination Node Error (0x02) - Response Timeout (0x05)",
+        [GetResponseCodeKey(0x03, 0x01)] = "Controller Error (0x03) - Communications Controller Error (0x01)",
+        [GetResponseCodeKey(0x03, 0x02)] = "Controller Error (0x03) - CPU Unit Error (0x02)",
+        [GetResponseCodeKey(0x03, 0x03)] = "Controller Error (0x03) - Controller Board Error (0x03)",
+        [GetResponseCodeKey(0x03, 0x04)] = "Controller Error (0x03) - Unit Number Error (0x04)",
+        [GetResponseCodeKey(0x04, 0x01)] = "Service Unsupported Error (0x04) - Undefined Command (0x01)",
+        [GetResponseCodeKey(0x04, 0x02)] = "Service Unsupported Error (0x04) - Command Not Supported by Model/Version (0x02)",
+        [GetResponseCodeKey(0x05, 0x01)] = "Routing Table Error (0x05) - Destination Address Setting Error (0x01)",
+        [GetResponseCodeKey(0x05, 0x02)] = "Routing Table Error (0x05) - No Routing Tables (0x02)",
+        [GetResponseCodeKey(0x05, 0x03)] = "Routing Table Error (0x05) - Routing Table Error (0x03)",
+        [GetResponseCodeKey(0x05, 0x04)] = "Routing Table Error (0x05) - Too Many Relays (0x04)",
+        [GetResponseCodeKey(0x10, 0x01)] = "Command Format Error (0x10) - Command Data is too Long (0x01)",
+        [GetResponseCodeKey(0x10, 0x02)] = "Command Format Error (0x10) - Command Data is too Short (0x02)",
+        [GetResponseCodeKey(0x10, 0x03)] = "Command Format Error (0x10) - Elements Length and Values Length do not Match (0x03)",
+        [GetResponseCodeKey(0x10, 0x04)] = "Command Format Error (0x10) - Command Format Error (0x04)",
+        [GetResponseCodeKey(0x10, 0x05)] = "Command Format Error (0x10) - Header Error (0x05)",
+        [GetResponseCodeKey(0x11, 0x01)] = "Parameter Error (0x11) - No Memory Area Specified (0x01)",
+        [GetResponseCodeKey(0x11, 0x02)] = "Parameter Error (0x11) - Access Size Error (0x02)",
+        [GetResponseCodeKey(0x11, 0x03)] = "Parameter Error (0x11) - Address Range Error (0x03)",
+        [GetResponseCodeKey(0x11, 0x04)] = "Parameter Error (0x11) - Address Range Exceeded (0x04)",
+        [GetResponseCodeKey(0x11, 0x06)] = "Parameter Error (0x11) - Program Missing (0x06)",
+        [GetResponseCodeKey(0x11, 0x09)] = "Parameter Error (0x11) - Relational Error (0x09)",
+        [GetResponseCodeKey(0x11, 0x0A)] = "Parameter Error (0x11) - Duplicate Data Access (0x0A)",
+        [GetResponseCodeKey(0x11, 0x0B)] = "Parameter Error (0x11) - Response Data is too Long (0x0B)",
+        [GetResponseCodeKey(0x11, 0x0C)] = "Parameter Error (0x11) - Parameter Error (0x0C)",
+        [GetResponseCodeKey(0x20, 0x02)] = "Read not Possible Error (0x20) - The Program Area is Protected (0x02)",
+        [GetResponseCodeKey(0x20, 0x03)] = "Read not Possible Error (0x20) - Table Missing (0x03)",
+        [GetResponseCodeKey(0x20, 0x04)] = "Read not Possible Error (0x20) - Data Missing (0x04)",
+        [GetResponseCodeKey(0x20, 0x05)] = "Read not Possible Error (0x20) - Program Missing (0x05)",
+        [GetResponseCodeKey(0x20, 0x06)] = "Read not Possible Error (0x20) - File Missing (0x06)",
+        [GetResponseCodeKey(0x20, 0x07)] = "Read not Possible Error (0x20) - Data Mismatch (0x07)",
+        [GetResponseCodeKey(0x21, 0x01)] = "Write not Possible Error (0x21) - The Specified Area is Read-Only (0x01)",
+        [GetResponseCodeKey(0x21, 0x02)] = "Write not Possible Error (0x21) - The Program Area is Protected (0x02)",
+        [GetResponseCodeKey(0x21, 0x03)] = "Write not Possible Error (0x21) - Cannot Register (0x03)",
+        [GetResponseCodeKey(0x21, 0x05)] = "Write not Possible Error (0x21) - Program Missing (0x05)",
+        [GetResponseCodeKey(0x21, 0x06)] = "Write not Possible Error (0x21) - File Missing (0x06)",
+        [GetResponseCodeKey(0x21, 0x07)] = "Write not Possible Error (0x21) - File Name already Exists (0x07)",
+        [GetResponseCodeKey(0x21, 0x08)] = "Write not Possible Error (0x21) - Cannot Change (0x08)",
+        [GetResponseCodeKey(0x22, 0x01)] = "Not Executable in Current Mode (0x22) - Not Possible during Execution (0x01)",
+        [GetResponseCodeKey(0x22, 0x02)] = "Not Executable in Current Mode (0x22) - Not Possible while Running (0x02)",
+        [GetResponseCodeKey(0x22, 0x03)] = "Not Executable in Current Mode (0x22) - PLC is in Program Mode (0x03)",
+        [GetResponseCodeKey(0x22, 0x04)] = "Not Executable in Current Mode (0x22) - PLC is in Debug Mode (0x04)",
+        [GetResponseCodeKey(0x22, 0x05)] = "Not Executable in Current Mode (0x22) - PLC is in Monitor Mode (0x05)",
+        [GetResponseCodeKey(0x22, 0x06)] = "Not Executable in Current Mode (0x22) - PLC is in Run Mode (0x06)",
+        [GetResponseCodeKey(0x22, 0x07)] = "Not Executable in Current Mode (0x22) - Specified Node is not a Polling Node (0x07)",
+        [GetResponseCodeKey(0x22, 0x08)] = "Not Executable in Current Mode (0x22) - Step Cannot be Executed (0x08)",
+        [GetResponseCodeKey(0x23, 0x01)] = "No Such Device (0x23) - File Device Missing (0x01)",
+        [GetResponseCodeKey(0x23, 0x02)] = "No Such Device (0x23) - Memory Missing (0x02)",
+        [GetResponseCodeKey(0x23, 0x03)] = "No Such Device (0x23) - Clock Missing (0x03)",
+        [GetResponseCodeKey(0x24, 0x01)] = "Cannot Start/Stop (0x24) - Table Missing (0x01)",
+    };
+
+    /// <summary>Stores main response code message prefixes.</summary>
+    private static readonly Dictionary<byte, string> MainResponseCodeMessages = new()
+    {
+        [0x01] = "Local Node Error",
+        [0x02] = "Destination Node Error",
+        [0x03] = "Controller Error",
+        [0x04] = "Service Unsupported Error",
+        [0x05] = "Routing Table Error",
+        [0x10] = "Command Format Error",
+        [0x11] = "Parameter Error",
+        [0x20] = "Read not Possible Error",
+        [0x21] = "Write not Possible Error",
+        [0x22] = "Not Executable in Current Mode",
+        [0x23] = "No Such Device",
+        [0x24] = "Cannot Start/Stop",
+    };
 
     /// <summary>Initializes a new instance of the <see cref="FINSResponse"/> class.</summary>
     private FINSResponse()
@@ -188,128 +266,53 @@ internal sealed class FINSResponse
     /// <param name="subCode">The s ub co de value.</param>
     private static void ThrowIfResponseError(byte mainCode, byte subCode)
     {
+        if (!TryGetResponseErrorMessage(mainCode, subCode, out var message))
+        {
+            return;
+        }
+
+        throw new FINSException(message);
+    }
+
+    /// <summary>Gets a response code dictionary key.</summary>
+    /// <param name="mainCode">The main response code.</param>
+    /// <param name="subCode">The sub response code.</param>
+    /// <returns>The response code key.</returns>
+    private static int GetResponseCodeKey(byte mainCode, byte subCode) => (mainCode << 8) | subCode;
+
+    /// <summary>Attempts to get a response error message.</summary>
+    /// <param name="mainCode">The main response code.</param>
+    /// <param name="subCode">The sub response code.</param>
+    /// <param name="message">The response error message.</param>
+    /// <returns>A value indicating whether the response is an error.</returns>
+    private static bool TryGetResponseErrorMessage(byte mainCode, byte subCode, out string message)
+    {
+        message = string.Empty;
         if (mainCode == 0 && subCode == 0)
         {
-            return;
+            return false;
         }
 
-        var exception = mainCode switch
+        if (ResponseCodeMessages.TryGetValue(GetResponseCodeKey(mainCode, subCode), out message))
         {
-            0x00 => subCode switch
-            {
-                0x01 => new FINSException("Normal Completion (0x00) - Service was Canceled (0x01)"),
-                _ => null,
-            },
-            0x01 => subCode switch
-            {
-                0x01 => new FINSException("Local Node Error (0x01) - The Local Node was not found within the Network (0x01)"),
-                _ => new FINSException("Local Node Error (0x01) - Sub Response Code (0x" + subCode.ToString("X2") + ")"),
-            },
-            0x02 => subCode switch
-            {
-                0x01 => new FINSException("Destination Node Error (0x02) - The Destination Node was not found within the Network (0x01)"),
-                0x02 => new FINSException("Destination Node Error (0x02) - The Destination Unit could not be found (0x02)"),
-                0x04 => new FINSException("Destination Node Error (0x02) - The Destination Node was Busy (0x04)"),
-                0x05 => new FINSException("Destination Node Error (0x02) - Response Timeout (0x05)"),
-                _ => new FINSException("Destination Node Error (0x02) - Sub Response Code (0x" + subCode.ToString("X2") + ")"),
-            },
-            0x03 => subCode switch
-            {
-                0x01 => new FINSException("Controller Error (0x03) - Communications Controller Error (0x01)"),
-                0x02 => new FINSException("Controller Error (0x03) - CPU Unit Error (0x02)"),
-                0x03 => new FINSException("Controller Error (0x03) - Controller Board Error (0x03)"),
-                0x04 => new FINSException("Controller Error (0x03) - Unit Number Error (0x04)"),
-                _ => new FINSException("Controller Error (0x03) - Sub Response Code (0x" + subCode.ToString("X2") + ")"),
-            },
-            0x04 => subCode switch
-            {
-                0x01 => new FINSException("Service Unsupported Error (0x04) - Undefined Command (0x01)"),
-                0x02 => new FINSException("Service Unsupported Error (0x04) - Command Not Supported by Model/Version (0x02)"),
-                _ => new FINSException("Service Unsupported Error (0x04) - Sub Response Code (0x" + subCode.ToString("X2") + ")"),
-            },
-            0x05 => subCode switch
-            {
-                0x01 => new FINSException("Routing Table Error (0x05) - Destination Address Setting Error (0x01)"),
-                0x02 => new FINSException("Routing Table Error (0x05) - No Routing Tables (0x02)"),
-                0x03 => new FINSException("Routing Table Error (0x05) - Routing Table Error (0x03)"),
-                0x04 => new FINSException("Routing Table Error (0x05) - Too Many Relays (0x04)"),
-                _ => new FINSException("Routing Table Error (0x05) - Sub Response Code (0x" + subCode.ToString("X2") + ")"),
-            },
-            0x10 => subCode switch
-            {
-                0x01 => new FINSException("Command Format Error (0x10) - Command Data is too Long (0x01)"),
-                0x02 => new FINSException("Command Format Error (0x10) - Command Data is too Short (0x02)"),
-                0x03 => new FINSException("Command Format Error (0x10) - Elements Length and Values Length do not Match (0x03)"),
-                0x04 => new FINSException("Command Format Error (0x10) - Command Format Error (0x04)"),
-                0x05 => new FINSException("Command Format Error (0x10) - Header Error (0x05)"),
-                _ => new FINSException("Command Format Error (0x10) - Sub Response Code (0x" + subCode.ToString("X2") + ")"),
-            },
-            0x11 => subCode switch
-            {
-                0x01 => new FINSException("Parameter Error (0x11) - No Memory Area Specified (0x01)"),
-                0x02 => new FINSException("Parameter Error (0x11) - Access Size Error (0x02)"),
-                0x03 => new FINSException("Parameter Error (0x11) - Address Range Error (0x03)"),
-                0x04 => new FINSException("Parameter Error (0x11) - Address Range Exceeded (0x04)"),
-                0x06 => new FINSException("Parameter Error (0x11) - Program Missing (0x06)"),
-                0x09 => new FINSException("Parameter Error (0x11) - Relational Error (0x09)"),
-                0x0A => new FINSException("Parameter Error (0x11) - Duplicate Data Access (0x0A)"),
-                0x0B => new FINSException("Parameter Error (0x11) - Response Data is too Long (0x0B)"),
-                0x0C => new FINSException("Parameter Error (0x11) - Parameter Error (0x0C)"),
-                _ => new FINSException("Parameter Error (0x11) - Sub Response Code (0x" + subCode.ToString("X2") + ")"),
-            },
-            0x20 => subCode switch
-            {
-                0x02 => new FINSException("Read not Possible Error (0x20) - The Program Area is Protected (0x02)"),
-                0x03 => new FINSException("Read not Possible Error (0x20) - Table Missing (0x03)"),
-                0x04 => new FINSException("Read not Possible Error (0x20) - Data Missing (0x04)"),
-                0x05 => new FINSException("Read not Possible Error (0x20) - Program Missing (0x05)"),
-                0x06 => new FINSException("Read not Possible Error (0x20) - File Missing (0x06)"),
-                0x07 => new FINSException("Read not Possible Error (0x20) - Data Mismatch (0x07)"),
-                _ => new FINSException("Read not Possible Error (0x20) - Sub Response Code (0x" + subCode.ToString("X2") + ")"),
-            },
-            0x21 => subCode switch
-            {
-                0x01 => new FINSException("Write not Possible Error (0x21) - The Specified Area is Read-Only (0x01)"),
-                0x02 => new FINSException("Write not Possible Error (0x21) - The Program Area is Protected (0x02)"),
-                0x03 => new FINSException("Write not Possible Error (0x21) - Cannot Register (0x03)"),
-                0x05 => new FINSException("Write not Possible Error (0x21) - Program Missing (0x05)"),
-                0x06 => new FINSException("Write not Possible Error (0x21) - File Missing (0x06)"),
-                0x07 => new FINSException("Write not Possible Error (0x21) - File Name already Exists (0x07)"),
-                0x08 => new FINSException("Write not Possible Error (0x21) - Cannot Change (0x08)"),
-                _ => new FINSException("Write not Possible Error (0x21) - Sub Response Code (0x" + subCode.ToString("X2") + ")"),
-            },
-            0x22 => subCode switch
-            {
-                0x01 => new FINSException("Not Executable in Current Mode (0x22) - Not Possible during Execution (0x01)"),
-                0x02 => new FINSException("Not Executable in Current Mode (0x22) - Not Possible while Running (0x02)"),
-                0x03 => new FINSException("Not Executable in Current Mode (0x22) - PLC is in Program Mode (0x03)"),
-                0x04 => new FINSException("Not Executable in Current Mode (0x22) - PLC is in Debug Mode (0x04)"),
-                0x05 => new FINSException("Not Executable in Current Mode (0x22) - PLC is in Monitor Mode (0x05)"),
-                0x06 => new FINSException("Not Executable in Current Mode (0x22) - PLC is in Run Mode (0x06)"),
-                0x07 => new FINSException("Not Executable in Current Mode (0x22) - Specified Node is not a Polling Node (0x07)"),
-                0x08 => new FINSException("Not Executable in Current Mode (0x22) - Step Cannot be Executed (0x08)"),
-                _ => new FINSException("Not Executable in Current Mode (0x22) - Sub Response Code (0x" + subCode.ToString("X2") + ")"),
-            },
-            0x23 => subCode switch
-            {
-                0x01 => new FINSException("No Such Device (0x23) - File Device Missing (0x01)"),
-                0x02 => new FINSException("No Such Device (0x23) - Memory Missing (0x02)"),
-                0x03 => new FINSException("No Such Device (0x23) - Clock Missing (0x03)"),
-                _ => new FINSException("No Such Device (0x23) - Sub Response Code (0x" + subCode.ToString("X2") + ")"),
-            },
-            0x24 => subCode switch
-            {
-                0x01 => new FINSException("Cannot Start/Stop (0x24) - Table Missing (0x01)"),
-                _ => new FINSException("Cannot Start/Stop (0x24) - Sub Response Code (0x" + subCode.ToString("X2") + ")"),
-            },
-            _ => new FINSException("Unknown Error - Main Response Code (0x" + mainCode.ToString("X2") + ") - Sub Response Code (0x" + subCode.ToString("X2") + ")"),
-        };
-
-        if (exception is null)
-        {
-            return;
+            return true;
         }
 
-        throw exception;
+        if (mainCode == 0)
+        {
+            message = string.Empty;
+            return false;
+        }
+
+        message = GetDefaultResponseErrorMessage(mainCode, subCode);
+        return true;
     }
+
+    /// <summary>Gets the default response error message.</summary>
+    /// <param name="mainCode">The main response code.</param>
+    /// <param name="subCode">The sub response code.</param>
+    /// <returns>The default response error message.</returns>
+    private static string GetDefaultResponseErrorMessage(byte mainCode, byte subCode) => MainResponseCodeMessages.TryGetValue(mainCode, out var mainMessage)
+        ? mainMessage + " (0x" + mainCode.ToString("X2") + ") - Sub Response Code (0x" + subCode.ToString("X2") + ")"
+        : "Unknown Error - Main Response Code (0x" + mainCode.ToString("X2") + ") - Sub Response Code (0x" + subCode.ToString("X2") + ")";
 }

@@ -6,4 +6,5 @@ using System.Windows;
 
 namespace OmronPlcRxDashboard;
 
+/// <summary>Dashboard application entry point.</summary>
 public partial class App : Application;

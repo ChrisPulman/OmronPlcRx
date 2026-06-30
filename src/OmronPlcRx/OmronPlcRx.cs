@@ -5,12 +5,9 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using OmronPlcRx.Core;
-using OmronPlcRx.Core.Converters;
-using OmronPlcRx.Core.Types;
 using OmronPlcRx.Enums;
 using OmronPlcRx.Results;
 using OmronPlcRx.Tags;
@@ -265,14 +262,12 @@ public sealed class OmronPlcRx : IOmronPlcRx
     /// <param name="paramName">The parameter name.</param>
     private static void ThrowIfNullOrWhiteSpace(string? value, string paramName)
     {
-        if (value is null)
+        switch (value)
         {
-            throw new ArgumentNullException(paramName);
-        }
-
-        if (value.Trim().Length == 0)
-        {
-            throw new ArgumentException("The value cannot be empty or whitespace.", paramName);
+            case null:
+                throw new ArgumentNullException(paramName);
+            case var text when text.Trim().Length == 0:
+                throw new ArgumentException("The value cannot be empty or whitespace.", paramName);
         }
     }
 
@@ -281,48 +276,10 @@ public sealed class OmronPlcRx : IOmronPlcRx
     /// <returns>The result produced by the operation.</returns>
     private static (string Area, ushort Address, byte? BitIndex) ParseAddress(string address)
     {
-        var baseForParse = address;
-        var bracketIndex = baseForParse.IndexOf('[');
-        if (bracketIndex >= 0 &&
-            baseForParse.IndexOf(']', bracketIndex + 1) is var endBracket &&
-            endBracket > bracketIndex)
-        {
-            baseForParse = baseForParse.Remove(bracketIndex, endBracket - bracketIndex + 1);
-        }
-
-        var dotIndex = baseForParse.IndexOf('.');
-        string basePart;
-        string? bitPart = null;
-        if (dotIndex >= 0)
-        {
-            basePart = baseForParse[..dotIndex];
-            bitPart = baseForParse[(dotIndex + 1)..];
-        }
-        else
-        {
-            basePart = baseForParse;
-        }
-
-        byte? bitIndex = null;
-        if (bitPart is not null)
-        {
-            if (!byte.TryParse(bitPart, out var bi) || bi > 15)
-            {
-                throw new FormatException($"Invalid bit index in address '{address}'");
-            }
-
-            bitIndex = bi;
-        }
-
-        var firstDigit = -1;
-        for (var i = 0; i < basePart.Length; i++)
-        {
-            if (char.IsDigit(basePart[i]))
-            {
-                firstDigit = i;
-                break;
-            }
-        }
+        var baseForParse = RemoveLengthSpecifier(address);
+        var (basePart, bitPart) = SplitBitPart(baseForParse);
+        var bitIndex = ParseBitIndex(bitPart, address);
+        var firstDigit = FindFirstDigit(basePart);
 
         if (firstDigit < 0)
         {
@@ -337,6 +294,65 @@ public sealed class OmronPlcRx : IOmronPlcRx
         }
 
         return (area, addr, bitIndex);
+    }
+
+    /// <summary>Removes a string length specifier from an address.</summary>
+    /// <param name="address">The address to parse.</param>
+    /// <returns>The address without a length specifier.</returns>
+    private static string RemoveLengthSpecifier(string address)
+    {
+        var bracketIndex = address.IndexOf('[');
+        if (bracketIndex < 0)
+        {
+            return address;
+        }
+
+        var endBracket = address.IndexOf(']', bracketIndex + 1);
+        return endBracket > bracketIndex ? address.Remove(bracketIndex, endBracket - bracketIndex + 1) : address;
+    }
+
+    /// <summary>Splits an address into base and bit-index parts.</summary>
+    /// <param name="address">The address to parse.</param>
+    /// <returns>The base and bit-index parts.</returns>
+    private static (string BasePart, string? BitPart) SplitBitPart(string address)
+    {
+        var dotIndex = address.IndexOf('.');
+        return dotIndex >= 0 ? (address[..dotIndex], address[(dotIndex + 1)..]) : (address, null);
+    }
+
+    /// <summary>Parses an optional bit index.</summary>
+    /// <param name="bitPart">The bit-index text.</param>
+    /// <param name="address">The source address.</param>
+    /// <returns>The bit index, if present.</returns>
+    private static byte? ParseBitIndex(string? bitPart, string address)
+    {
+        if (bitPart is null)
+        {
+            return null;
+        }
+
+        if (byte.TryParse(bitPart, out var bitIndex) && bitIndex <= 15)
+        {
+            return bitIndex;
+        }
+
+        throw new FormatException($"Invalid bit index in address '{address}'");
+    }
+
+    /// <summary>Finds the first digit in a string.</summary>
+    /// <param name="value">The value to scan.</param>
+    /// <returns>The zero-based digit index, or -1.</returns>
+    private static int FindFirstDigit(string value)
+    {
+        for (var i = 0; i < value.Length; i++)
+        {
+            if (char.IsDigit(value[i]))
+            {
+                return i;
+            }
+        }
+
+        return -1;
     }
 
     /// <summary>Initializes a new instance of the <see cref="ExtractStringMeta"/> class.</summary>
@@ -392,69 +408,112 @@ public sealed class OmronPlcRx : IOmronPlcRx
     /// <returns>A task that represents the asynchronous operation.</returns>
     private async Task PollLoopAsync()
     {
-        // Lazy initialize PLC once before first poll
-        if (!_plcInitialized)
-        {
-            try
-            {
-                await _plc.InitializeAsync(_cts.Token).ConfigureAwait(false);
-                _plcInitialized = true;
-            }
-            catch (Exception ex)
-            {
-                _errors.OnNext(new OmronPLCException("PLC initialization failed", ex));
-            }
-        }
+        await InitializePlcForPollingAsync().ConfigureAwait(false);
 
         while (!_cts.IsCancellationRequested)
         {
-            try
-            {
-                foreach (var kvp in _entries)
-                {
-                    if (_cts.IsCancellationRequested)
-                    {
-                        break;
-                    }
-
-                    var name = kvp.Key;
-                    var entry = kvp.Value;
-                    try
-                    {
-                        var changed = await entry.ReadAsync(_plc, _cts.Token).ConfigureAwait(false);
-                        if (changed && entry.Tag is IPlcTag tag)
-                        {
-                            if (_subjects.TryGetValue(name, out var subj))
-                            {
-                                subj.OnNext(tag.Value);
-                            }
-
-                            _tagChanged.OnNext(tag);
-                        }
-                    }
-                    catch (OmronPLCException ex)
-                    {
-                        _errors.OnNext(new OmronPLCException(ex.Message, ex));
-                    }
-                    catch (Exception ex)
-                    {
-                        _errors.OnNext(new OmronPLCException($"Unexpected error reading tag '{name}'", ex));
-                    }
-                }
-            }
-            catch (Exception loopEx)
-            {
-                _errors.OnNext(new OmronPLCException("Polling loop failure", loopEx));
-            }
-
-            try
-            {
-                await Task.Delay(_pollInterval, _cts.Token).ConfigureAwait(false);
-            }
-            catch (TaskCanceledException)
+            await PollEntriesOnceAsync().ConfigureAwait(false);
+            if (!await DelayUntilNextPollAsync().ConfigureAwait(false))
             {
                 break;
             }
+        }
+    }
+
+    /// <summary>Initializes the PLC before polling starts.</summary>
+    /// <returns>A task that represents the asynchronous operation.</returns>
+    private async Task InitializePlcForPollingAsync()
+    {
+        if (_plcInitialized)
+        {
+            return;
+        }
+
+        try
+        {
+            await _plc.InitializeAsync(_cts.Token).ConfigureAwait(false);
+            _plcInitialized = true;
+        }
+        catch (Exception ex)
+        {
+            _errors.OnNext(new OmronPLCException("PLC initialization failed", ex));
+        }
+    }
+
+    /// <summary>Polls all registered tag entries once.</summary>
+    /// <returns>A task that represents the asynchronous operation.</returns>
+    private async Task PollEntriesOnceAsync()
+    {
+        try
+        {
+            foreach (var kvp in _entries)
+            {
+                if (_cts.IsCancellationRequested)
+                {
+                    break;
+                }
+
+                await PollEntryAsync(kvp.Key, kvp.Value).ConfigureAwait(false);
+            }
+        }
+        catch (Exception loopEx)
+        {
+            _errors.OnNext(new OmronPLCException("Polling loop failure", loopEx));
+        }
+    }
+
+    /// <summary>Polls one tag entry.</summary>
+    /// <param name="name">The tag name.</param>
+    /// <param name="entry">The tag entry.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
+    private async Task PollEntryAsync(string name, ITagEntry entry)
+    {
+        try
+        {
+            var changed = await entry.ReadAsync(_plc, _cts.Token).ConfigureAwait(false);
+            PublishChangedTag(name, entry, changed);
+        }
+        catch (OmronPLCException ex)
+        {
+            _errors.OnNext(new OmronPLCException(ex.Message, ex));
+        }
+        catch (Exception ex)
+        {
+            _errors.OnNext(new OmronPLCException($"Unexpected error reading tag '{name}'", ex));
+        }
+    }
+
+    /// <summary>Publishes changed tag values to observers.</summary>
+    /// <param name="name">The tag name.</param>
+    /// <param name="entry">The tag entry.</param>
+    /// <param name="changed">A value indicating whether the entry changed.</param>
+    private void PublishChangedTag(string name, ITagEntry entry, bool changed)
+    {
+        if (!changed || entry.Tag is not IPlcTag tag)
+        {
+            return;
+        }
+
+        if (_subjects.TryGetValue(name, out var subject))
+        {
+            subject.OnNext(tag.Value);
+        }
+
+        _tagChanged.OnNext(tag);
+    }
+
+    /// <summary>Delays until the next poll interval.</summary>
+    /// <returns>A value indicating whether polling should continue.</returns>
+    private async Task<bool> DelayUntilNextPollAsync()
+    {
+        try
+        {
+            await Task.Delay(_pollInterval, _cts.Token).ConfigureAwait(false);
+            return true;
+        }
+        catch (TaskCanceledException)
+        {
+            return false;
         }
     }
 
@@ -473,160 +532,74 @@ public sealed class OmronPlcRx : IOmronPlcRx
 
         if (typeof(T) == typeof(string))
         {
-            var raw = entry.Tag.Address;
-            var (baseAddr, length) = ExtractStringMeta(raw);
-            var (area, addr, bitIndex) = ParseAddress(baseAddr);
-            if (bitIndex is not null)
-            {
-                throw new NotSupportedException("Bit indexing not supported for string types.");
-            }
-
-            var str = Convert.ToString(value) ?? string.Empty;
-            var bytes = Encoding.ASCII.GetBytes(str);
-            if (bytes.Length > length)
-            {
-                Array.Resize(ref bytes, length);
-            }
-            else if (bytes.Length < length)
-            {
-                var padded = new byte[length];
-                Array.Copy(bytes, padded, bytes.Length);
-                bytes = padded;
-            }
-
-            // Ensure even length
-            if (bytes.Length % 2 != 0)
-            {
-                Array.Resize(ref bytes, bytes.Length + 1);
-            }
-
-            var wordCount = bytes.Length / 2;
-            var words = new short[wordCount];
-            for (var i = 0; i < wordCount; i++)
-            {
-                var b1 = bytes[i * 2];
-                var b2 = bytes[(i * 2) + 1];
-
-                // Store first char (b1) in high byte for consistency with other multi-byte handling (network big-end assumption)
-                words[i] = (short)((b1 << 8) | b2);
-            }
-
-            await _plc.WriteWordsAsync(words, addr, ToWordType(area), ct).ConfigureAwait(false);
+            await WriteStringValueAsync(entry.Tag.Address, value, ct).ConfigureAwait(false);
             return;
         }
 
-        var (area2, addr2, bitIndex2) = ParseAddress(entry.Tag.Address);
+        var (area, addr, bitIndex) = ParseAddress(entry.Tag.Address);
+        await WriteNonStringValueAsync(typeof(T), (object)value!, area, addr, bitIndex, ct).ConfigureAwait(false);
+    }
 
-        if (typeof(T) == typeof(bool))
-        {
-            var b = Convert.ToBoolean(value);
-            if (bitIndex2 is null)
-            {
-                var wordVal = (short)(b ? 1 : 0);
-                await _plc.WriteWordsAsync([wordVal], addr2, ToWordType(area2), ct).ConfigureAwait(false);
-            }
-            else
-            {
-                await _plc.WriteBitsAsync([b], addr2, bitIndex2.Value, ToBitType(area2), ct).ConfigureAwait(false);
-            }
-        }
-        else if (typeof(T) == typeof(byte))
-        {
-            var bv = Convert.ToByte(value);
-            var word = (short)bv; // store in low byte
-            await _plc.WriteWordsAsync([word], addr2, ToWordType(area2), ct).ConfigureAwait(false);
-        }
-        else if (typeof(T) == typeof(ushort))
-        {
-            var us = Convert.ToUInt16(value);
-            var word = unchecked((short)us);
-            await _plc.WriteWordsAsync([word], addr2, ToWordType(area2), ct).ConfigureAwait(false);
-        }
-        else if (typeof(T) == typeof(short))
-        {
-            var s = Convert.ToInt16(value);
-            await _plc.WriteWordsAsync([s], addr2, ToWordType(area2), ct).ConfigureAwait(false);
-        }
-        else if (typeof(T) == typeof(int))
-        {
-            var i = Convert.ToInt32(value);
-            var hi = (ushort)((i >> 16) & 0xFFFF);
-            var lo = (ushort)(i & 0xFFFF);
+    /// <summary>Writes a string value to word memory.</summary>
+    /// <param name="address">The tag address.</param>
+    /// <param name="value">The value to write.</param>
+    /// <param name="ct">The cancellation token.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
+    private async Task WriteStringValueAsync(string address, object value, CancellationToken ct)
+    {
+        var (baseAddr, length) = ExtractStringMeta(address);
+        var (area, addr, bitIndex) = ParseAddress(baseAddr);
+        PlcTagValueCodec.ThrowIfBitIndexedString(bitIndex);
+        var words = PlcTagValueCodec.GetStringWords(value, length);
+        await _plc.WriteWordsAsync(words, addr, ToWordType(area), ct).ConfigureAwait(false);
+    }
 
-            // PLC expects low word first
-            short[] words = [unchecked((short)lo), unchecked((short)hi)];
-            await _plc.WriteWordsAsync(words, addr2, ToWordType(area2), ct).ConfigureAwait(false);
-        }
-        else if (typeof(T) == typeof(uint))
+    /// <summary>Writes a non-string value to PLC memory.</summary>
+    /// <param name="type">The value type.</param>
+    /// <param name="value">The value to write.</param>
+    /// <param name="area">The memory area.</param>
+    /// <param name="addr">The memory address.</param>
+    /// <param name="bitIndex">The optional bit index.</param>
+    /// <param name="ct">The cancellation token.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
+    private async Task WriteNonStringValueAsync(Type type, object value, string area, ushort addr, byte? bitIndex, CancellationToken ct)
+    {
+        if (type == typeof(bool))
         {
-            var ui = Convert.ToUInt32(value);
-            var hi = (ushort)((ui >> 16) & 0xFFFF);
-            var lo = (ushort)(ui & 0xFFFF);
-            short[] words = [unchecked((short)lo), unchecked((short)hi)];
-            await _plc.WriteWordsAsync(words, addr2, ToWordType(area2), ct).ConfigureAwait(false);
+            await WriteBooleanValueAsync(Convert.ToBoolean(value), area, addr, bitIndex, ct).ConfigureAwait(false);
+            return;
         }
-        else if (typeof(T) == typeof(float))
-        {
-            var f = Convert.ToSingle(value);
-            var bytes = BitConverter.GetBytes(f);
-            if (BitConverter.IsLittleEndian)
-            {
-                Array.Reverse(bytes); // bytes now big-endian overall
-            }
 
-            // bytes[0..1] = high-order 16 bits, bytes[2..3] = low-order 16 bits (after reversal)
-            var highWord = (ushort)((bytes[0] << 8) | bytes[1]);
-            var lowWord = (ushort)((bytes[2] << 8) | bytes[3]);
+        if (PlcTagValueCodec.TryGetSingleWord(type, value, out var word))
+        {
+            await _plc.WriteWordsAsync([word], addr, ToWordType(area), ct).ConfigureAwait(false);
+            return;
+        }
 
-            // Write low word first, then high word
-            short[] words = [unchecked((short)lowWord), unchecked((short)highWord)];
-            await _plc.WriteWordsAsync(words, addr2, ToWordType(area2), ct).ConfigureAwait(false);
-        }
-        else if (typeof(T) == typeof(double))
+        if (!PlcTagValueCodec.TryGetWordArray(type, value, out var words))
         {
-            var d = Convert.ToDouble(value);
-            var bytes = BitConverter.GetBytes(d);
-            if (BitConverter.IsLittleEndian)
-            {
-                Array.Reverse(bytes); // big-endian ordering overall
-            }
+            return;
+        }
 
-            // Construct 4 words: bytes[0..1] high-most ... bytes[6..7] low-most; need to output low words first
-            var highOrderWord0 = (ushort)((bytes[0] << 8) | bytes[1]);
-            var highOrderWord1 = (ushort)((bytes[2] << 8) | bytes[3]);
-            var lowOrderWord0 = (ushort)((bytes[4] << 8) | bytes[5]);
-            var lowOrderWord1 = (ushort)((bytes[6] << 8) | bytes[7]);
+        await _plc.WriteWordsAsync(words, addr, ToWordType(area), ct).ConfigureAwait(false);
+    }
 
-            // Order: low words first, then high words
-            short[] words = [unchecked((short)lowOrderWord0), unchecked((short)lowOrderWord1), unchecked((short)highOrderWord0), unchecked((short)highOrderWord1)];
-            await _plc.WriteWordsAsync(words, addr2, ToWordType(area2), ct).ConfigureAwait(false);
-        }
-        else if (typeof(T) == typeof(Bcd16))
+    /// <summary>Writes a Boolean value as either a bit or word.</summary>
+    /// <param name="value">The Boolean value.</param>
+    /// <param name="area">The memory area.</param>
+    /// <param name="addr">The memory address.</param>
+    /// <param name="bitIndex">The optional bit index.</param>
+    /// <param name="ct">The cancellation token.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
+    private async Task WriteBooleanValueAsync(bool value, string area, ushort addr, byte? bitIndex, CancellationToken ct)
+    {
+        if (bitIndex is null)
         {
-            var numeric = ((Bcd16)(object)value).Value;
-            var word = BCDConverter.GetBCDWord(numeric);
-            await _plc.WriteWordsAsync([word], addr2, ToWordType(area2), ct).ConfigureAwait(false);
+            await _plc.WriteWordsAsync([(short)(value ? 1 : 0)], addr, ToWordType(area), ct).ConfigureAwait(false);
+            return;
         }
-        else if (typeof(T) == typeof(BcdU16))
-        {
-            var numeric = ((BcdU16)(object)value).Value;
-            var word = BCDConverter.GetBCDWord(numeric);
-            await _plc.WriteWordsAsync([word], addr2, ToWordType(area2), ct).ConfigureAwait(false);
-        }
-        else if (typeof(T) == typeof(Bcd32))
-        {
-            var numeric = ((Bcd32)(object)value).Value;
-            var bcdWords = BCDConverter.GetBCDWords(numeric); // assume [lowWord, highWord]
-            short[] words = [bcdWords[0], bcdWords[1]]; // low first
-            await _plc.WriteWordsAsync(words, addr2, ToWordType(area2), ct).ConfigureAwait(false);
-        }
-        else if (typeof(T) == typeof(BcdU32))
-        {
-            var numeric = ((BcdU32)(object)value).Value;
-            var bcdWords = BCDConverter.GetBCDWords(numeric);
-            short[] words = [bcdWords[0], bcdWords[1]];
-            await _plc.WriteWordsAsync(words, addr2, ToWordType(area2), ct).ConfigureAwait(false);
-        }
+
+        await _plc.WriteBitsAsync([value], addr, bitIndex.Value, ToBitType(area), ct).ConfigureAwait(false);
     }
 
     /// <summary>Represents the t ag en tr y type.</summary>
@@ -642,171 +615,62 @@ public sealed class OmronPlcRx : IOmronPlcRx
         /// <param name="ct">The ct value.</param>
         public async Task<bool> ReadAsync(OmronPLCConnection plc, CancellationToken ct)
         {
-            // String handling
+            var newValue = await ReadValueAsync(plc, ct).ConfigureAwait(false);
+            return UpdateValue(newValue);
+        }
+
+        /// <summary>Reads a value from the PLC.</summary>
+        /// <param name="plc">The PLC connection.</param>
+        /// <param name="ct">The cancellation token.</param>
+        /// <returns>The read value.</returns>
+        private async Task<object> ReadValueAsync(OmronPLCConnection plc, CancellationToken ct)
+        {
             if (typeof(T) == typeof(string))
             {
-                var (baseAddr, length) = ExtractStringMeta(Tag.Address);
-                var (area, addr, bitIndex) = ParseAddress(baseAddr);
-                if (bitIndex is not null)
-                {
-                    throw new NotSupportedException("Bit indexing not supported for string types.");
-                }
-
-                var wordCount = (length + 1) / 2; // two chars per word
-                var words = await plc.ReadWordsAsync(addr, (ushort)wordCount, ToWordType(area), ct).ConfigureAwait(false);
-                var bytes = new List<byte>(wordCount * 2);
-                for (var i = 0; i < wordCount; i++)
-                {
-                    var w = (ushort)words.Values[i];
-                    bytes.Add((byte)(w >> 8));
-                    bytes.Add((byte)(w & 0xFF));
-                }
-
-                if (bytes.Count > length)
-                {
-                    bytes.RemoveRange(length, bytes.Count - length);
-                }
-
-                // Trim at first null
-                var nullIndex = bytes.IndexOf(0);
-                var arr = (nullIndex >= 0 ? bytes.GetRange(0, nullIndex) : bytes).ToArray();
-                object newStr = Encoding.ASCII.GetString(arr);
-                if (!Equals(newStr, Tag.Value) && Tag is PlcTag<T> plcTagStr)
-                {
-                    plcTagStr.Value = (T)newStr;
-                    return true;
-                }
-
-                return false;
+                return await ReadStringValueAsync(plc, ct).ConfigureAwait(false);
             }
 
-            var (area2, addr2, bitIndex2) = ParseAddress(Tag.Address);
-            object newVal;
+            var (area, addr, bitIndex) = ParseAddress(Tag.Address);
             if (typeof(T) == typeof(bool))
             {
-                if (bitIndex2 is null)
-                {
-                    var word = await plc.ReadWordAsync(addr2, ToWordType(area2), ct).ConfigureAwait(false);
-                    newVal = word.Values[0] != 0;
-                }
-                else
-                {
-                    var bits = await plc.ReadBitsAsync(addr2, bitIndex2.Value, 1, ToBitType(area2), ct).ConfigureAwait(false);
-                    newVal = bits.Values[0];
-                }
+                return await PlcTagValueCodec.ReadBooleanValueAsync(plc, ToWordType(area), ToBitType(area), addr, bitIndex, ct).ConfigureAwait(false);
             }
-            else if (typeof(T) == typeof(short))
-            {
-                var words = await plc.ReadWordsAsync(addr2, 1, ToWordType(area2), ct).ConfigureAwait(false);
-                newVal = words.Values[0];
-            }
-            else if (typeof(T) == typeof(byte))
-            {
-                var words = await plc.ReadWordsAsync(addr2, 1, ToWordType(area2), ct).ConfigureAwait(false);
-                newVal = (byte)(words.Values[0] & 0xFF);
-            }
-            else if (typeof(T) == typeof(ushort))
-            {
-                var words = await plc.ReadWordsAsync(addr2, 1, ToWordType(area2), ct).ConfigureAwait(false);
-                newVal = (ushort)words.Values[0];
-            }
-            else if (typeof(T) == typeof(int))
-            {
-                var words = await plc.ReadWordsAsync(addr2, 2, ToWordType(area2), ct).ConfigureAwait(false);
 
-                // PLC provides low word first
-                var lo = (ushort)words.Values[0];
-                var hi = (ushort)words.Values[1];
-                var composite = ((uint)hi << 16) | lo;
-                newVal = unchecked((int)composite);
-            }
-            else if (typeof(T) == typeof(uint))
-            {
-                var words = await plc.ReadWordsAsync(addr2, 2, ToWordType(area2), ct).ConfigureAwait(false);
-                var lo = (uint)(ushort)words.Values[0];
-                var hi = (uint)(ushort)words.Values[1];
-                newVal = (hi << 16) | lo;
-            }
-            else if (typeof(T) == typeof(float))
-            {
-                var words = await plc.ReadWordsAsync(addr2, 2, ToWordType(area2), ct).ConfigureAwait(false);
-
-                // low word first
-                var lo = (ushort)words.Values[0];
-                var hi = (ushort)words.Values[1];
-                var bytes = new byte[4]
-                {
-                    (byte)(hi >> 8), (byte)(hi & 0xFF), (byte)(lo >> 8), (byte)(lo & 0xFF)
-                };
-                if (BitConverter.IsLittleEndian)
-                {
-                    Array.Reverse(bytes);
-                }
-
-                newVal = BitConverter.ToSingle(bytes, 0);
-            }
-            else if (typeof(T) == typeof(double))
-            {
-                var words = await plc.ReadWordsAsync(addr2, 4, ToWordType(area2), ct).ConfigureAwait(false);
-
-                // words: [low2][low3][high0][high1]
-                var w0 = (ushort)words.Values[2];
-                var w1 = (ushort)words.Values[3];
-                var w2 = (ushort)words.Values[0];
-                var w3 = (ushort)words.Values[1];
-                var bytes = new byte[8]
-                {
-                    (byte)(w0 >> 8), (byte)(w0 & 0xFF),
-                    (byte)(w1 >> 8), (byte)(w1 & 0xFF),
-                    (byte)(w2 >> 8), (byte)(w2 & 0xFF),
-                    (byte)(w3 >> 8), (byte)(w3 & 0xFF)
-                };
-                if (BitConverter.IsLittleEndian)
-                {
-                    Array.Reverse(bytes);
-                }
-
-                newVal = BitConverter.ToDouble(bytes, 0);
-            }
-            else if (typeof(T) == typeof(Bcd16))
-            {
-                var words = await plc.ReadWordsAsync(addr2, 1, ToWordType(area2), ct).ConfigureAwait(false);
-                var val = BCDConverter.ToInt16(words.Values[0]);
-                newVal = new Bcd16(val);
-            }
-            else if (typeof(T) == typeof(BcdU16))
-            {
-                var words = await plc.ReadWordsAsync(addr2, 1, ToWordType(area2), ct).ConfigureAwait(false);
-                var val = BCDConverter.ToUInt16(words.Values[0]);
-                newVal = new BcdU16(val);
-            }
-            else if (typeof(T) == typeof(Bcd32))
-            {
-                var words = await plc.ReadWordsAsync(addr2, 2, ToWordType(area2), ct).ConfigureAwait(false);
-                var low = words.Values[0];
-                var high = words.Values[1];
-                var val = BCDConverter.ToInt32(low, high);
-                newVal = new Bcd32(val);
-            }
-            else if (typeof(T) == typeof(BcdU32))
-            {
-                var words = await plc.ReadWordsAsync(addr2, 2, ToWordType(area2), ct).ConfigureAwait(false);
-                var low = words.Values[0];
-                var high = words.Values[1];
-                var val = BCDConverter.ToUInt32(low, high);
-                newVal = new BcdU32(val);
-            }
-            else
+            var wordCount = PlcTagValueCodec.GetReadWordCount(typeof(T));
+            if (wordCount == 0)
             {
                 throw new NotSupportedException($"Tag type '{nameof(T)}' not supported.");
             }
 
-            if (Equals(newVal, Tag.Value) || Tag is not PlcTag<T> plcTag)
+            var words = await plc.ReadWordsAsync(addr, (ushort)wordCount, ToWordType(area), ct).ConfigureAwait(false);
+            return PlcTagValueCodec.ConvertReadWords(typeof(T), words.Values);
+        }
+
+        /// <summary>Reads a string value from the PLC.</summary>
+        /// <param name="plc">The PLC connection.</param>
+        /// <param name="ct">The cancellation token.</param>
+        /// <returns>The string value.</returns>
+        private async Task<object> ReadStringValueAsync(OmronPLCConnection plc, CancellationToken ct)
+        {
+            var (baseAddr, length) = ExtractStringMeta(Tag.Address);
+            var (area, addr, bitIndex) = ParseAddress(baseAddr);
+            PlcTagValueCodec.ThrowIfBitIndexedString(bitIndex);
+            var wordCount = (length + 1) / 2;
+            var words = await plc.ReadWordsAsync(addr, (ushort)wordCount, ToWordType(area), ct).ConfigureAwait(false);
+            return PlcTagValueCodec.GetStringFromWords(words.Values, length, wordCount);
+        }
+
+        /// <summary>Updates the cached tag value.</summary>
+        /// <param name="newValue">The new value.</param>
+        /// <returns>A value indicating whether the cached value changed.</returns>
+        private bool UpdateValue(object newValue)
+        {
+            if (Equals(newValue, Tag.Value) || Tag is not PlcTag<T> plcTag)
             {
                 return false;
             }
 
-            plcTag.Value = (T)newVal;
+            plcTag.Value = (T)newValue;
             return true;
         }
     }

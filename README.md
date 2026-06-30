@@ -1,5 +1,9 @@
 # OmronPlcRx
 
+<div align="center">
+  <img src="Images/OmronPLCRx-icon.png" style="width:25%;" />
+</div>
+
 A Reactive Omron PLC communications library for .NET (`net462`, `net472`, `net481`, `net8.0`, `net9.0`, `net10.0`).
 
 OmronPlcRx provides a high-level, reactive, strongly typed interface for interacting with Omron PLCs over the FINS protocol using TCP, UDP, serial Host Link FINS, or serial Toolbus FINS. It handles:
@@ -265,7 +269,7 @@ using ReactiveUI.Primitives.Async;
 
 plc.AddUpdateTagItem<bool>("D100.0", "MotorRun");
 
-IObservableAsync<bool?> motorRunStream = plc.ObserveAsync<bool>("MotorRun");
+IObservableAsync<bool?> motorRunStream = plc.ObserveAsAsyncObservable<bool>("MotorRun");
 
 await foreach (var value in plc.ObserveValuesAsync<bool>("MotorRun", cancellationToken))
 {
@@ -275,9 +279,9 @@ await foreach (var value in plc.ObserveValuesAsync<bool>("MotorRun", cancellatio
 
 Available adapters:
 
-- `ObserveAsync<T>(tagName)` converts a typed tag stream to `IObservableAsync<T?>`.
-- `ObserveAllAsync()` converts the aggregate tag stream to `IObservableAsync<IPlcTag?>`.
-- `ErrorsAsync()` converts the operational error stream to `IObservableAsync<OmronPLCException?>`.
+- `ObserveAsAsyncObservable<T>(tagName)` converts a typed tag stream to `IObservableAsync<T?>`.
+- `ObserveAllAsAsyncObservable()` converts the aggregate tag stream to `IObservableAsync<IPlcTag?>`.
+- `ErrorsAsAsyncObservable()` converts the operational error stream to `IObservableAsync<OmronPLCException?>`.
 - `ObserveValuesAsync<T>(tagName, cancellationToken)` exposes a tag stream as `IAsyncEnumerable<T?>`.
 
 The async surface bridges the existing polling loop, so current `IObservable<T>` behavior remains unchanged for all target frameworks.

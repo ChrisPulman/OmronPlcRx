@@ -1,6 +1,7 @@
 // Copyright (c) 2022-2026 Chris Pulman. All rights reserved.
 // Chris Pulman licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for full license information.
+
 using System.IO.Ports;
 using OmronPlcRx;
 using OmronPlcRx.Enums;
@@ -8,29 +9,18 @@ using ReactiveUI;
 
 namespace OmronPlcRxDashboard.ViewModels;
 
+/// <summary>Stores dashboard PLC connection settings.</summary>
 public sealed class ConnectionSettings : ReactiveObject
 {
-
-    private byte _remoteNodeId = 1;
-
-    private string _host = "192.168.2.220";
-
-    private int _timeout = 2000;
-
-    private int _pollMs = 200;
-
-    private OmronSerialProtocol _serialProtocol = OmronSerialProtocol.HostLinkFins;
-
-    private int _dataBits = 7;
-
-    private StopBits _stopBits = StopBits.Two;
-
-    private bool _rtsEnable;
-
-    private int _maximumFrameLength = 1004;
+    /// <summary>Gets or sets the local FINS node identifier.</summary>
     public byte LocalNodeId { get => field; set => this.RaiseAndSetIfChanged(ref field, value); }
-= 11;
-    public byte RemoteNodeId { get => _remoteNodeId; set => this.RaiseAndSetIfChanged(ref _remoteNodeId, value); }
+        = 11;
+
+    /// <summary>Gets or sets the remote FINS node identifier.</summary>
+    public byte RemoteNodeId { get => field; set => this.RaiseAndSetIfChanged(ref field, value); }
+        = 1;
+
+    /// <summary>Gets or sets the selected connection method.</summary>
     public ConnectionMethod Method
     {
         get => field;
@@ -43,37 +33,49 @@ public sealed class ConnectionSettings : ReactiveObject
                 return;
             }
 
-            if (value == ConnectionMethod.Serial && _remoteNodeId == 1)
+            RemoteNodeId = (value, RemoteNodeId) switch
             {
-                RemoteNodeId = 0;
-            }
-            else if (value != ConnectionMethod.Serial && _remoteNodeId == 0)
-            {
-                RemoteNodeId = 1;
-            }
+                (ConnectionMethod.Serial, 1) => 0,
+                (not ConnectionMethod.Serial, 0) => 1,
+                _ => RemoteNodeId,
+            };
 
             this.RaisePropertyChanged(nameof(IsSerial));
         }
-    }
-= ConnectionMethod.TCP;
+    } = ConnectionMethod.TCP;
 
-    public string Host { get => _host; set => this.RaiseAndSetIfChanged(ref _host, value); }
+    /// <summary>Gets or sets the PLC host name or IP address.</summary>
+    public string Host { get => field; set => this.RaiseAndSetIfChanged(ref field, value); }
+        = "192.168.2.220";
+
+    /// <summary>Gets or sets the PLC port.</summary>
     public int Port { get => field; set => this.RaiseAndSetIfChanged(ref field, value); }
-= 9600;
-    public int Timeout { get => _timeout; set => this.RaiseAndSetIfChanged(ref _timeout, value); }
-    public int Retries { get => field; set => this.RaiseAndSetIfChanged(ref field, value); }
-= 1;
-    public int PollMs { get => _pollMs; set => this.RaiseAndSetIfChanged(ref _pollMs, value); }
-    public string SerialPortName { get => field; set => this.RaiseAndSetIfChanged(ref field, value); }
-= "COM3";
+        = 9_600;
 
+    /// <summary>Gets or sets the communication timeout in milliseconds.</summary>
+    public int Timeout { get => field; set => this.RaiseAndSetIfChanged(ref field, value); }
+        = 2_000;
+
+    /// <summary>Gets or sets the retry count.</summary>
+    public int Retries { get => field; set => this.RaiseAndSetIfChanged(ref field, value); }
+        = 1;
+
+    /// <summary>Gets or sets the polling interval in milliseconds.</summary>
+    public int PollMs { get => field; set => this.RaiseAndSetIfChanged(ref field, value); }
+        = 200;
+
+    /// <summary>Gets or sets the serial port name.</summary>
+    public string SerialPortName { get => field; set => this.RaiseAndSetIfChanged(ref field, value); }
+        = "COM3";
+
+    /// <summary>Gets or sets the serial protocol.</summary>
     public OmronSerialProtocol SerialProtocol
     {
-        get => _serialProtocol;
+        get => field;
         set
         {
-            var previous = _serialProtocol;
-            _ = this.RaiseAndSetIfChanged(ref _serialProtocol, value);
+            var previous = field;
+            _ = this.RaiseAndSetIfChanged(ref field, value);
             if (previous == value)
             {
                 return;
@@ -81,7 +83,7 @@ public sealed class ConnectionSettings : ReactiveObject
 
             if (value == OmronSerialProtocol.Toolbus)
             {
-                BaudRate = 115200;
+                BaudRate = 115_200;
                 DataBits = 8;
                 Parity = Parity.None;
                 StopBits = StopBits.One;
@@ -89,45 +91,91 @@ public sealed class ConnectionSettings : ReactiveObject
                 RtsEnable = true;
                 DtrEnable = false;
                 RemoteNodeId = 0;
-                MaximumFrameLength = 1004;
+                MaximumFrameLength = 1_004;
             }
 
             this.RaisePropertyChanged(nameof(IsHostLinkFins));
         }
-    }
-    public int BaudRate { get => field; set => this.RaiseAndSetIfChanged(ref field, value); }
-= 9600;
-    public int DataBits { get => _dataBits; set => this.RaiseAndSetIfChanged(ref _dataBits, value); }
-    public Parity Parity { get => field; set => this.RaiseAndSetIfChanged(ref field, value); }
-= Parity.Even;
-    public StopBits StopBits { get => _stopBits; set => this.RaiseAndSetIfChanged(ref _stopBits, value); }
-    public Handshake Handshake { get => field; set => this.RaiseAndSetIfChanged(ref field, value); }
-= Handshake.None;
-    public bool RtsEnable { get => _rtsEnable; set => this.RaiseAndSetIfChanged(ref _rtsEnable, value); }
-    public bool DtrEnable { get => field; set => this.RaiseAndSetIfChanged(ref field, value); }
-    public byte HostLinkUnitNumber { get => field; set => this.RaiseAndSetIfChanged(ref field, value); }
-    public byte ResponseWaitTime { get => field; set => this.RaiseAndSetIfChanged(ref field, value); }
-    public OmronHostLinkFinsFrameMode FrameMode { get => field; set => this.RaiseAndSetIfChanged(ref field, value); }
-= OmronHostLinkFinsFrameMode.Direct;
-    public int MaximumFrameLength { get => _maximumFrameLength; set => this.RaiseAndSetIfChanged(ref _maximumFrameLength, value); }
+    } = OmronSerialProtocol.HostLinkFins;
 
+    /// <summary>Gets or sets the serial baud rate.</summary>
+    public int BaudRate { get => field; set => this.RaiseAndSetIfChanged(ref field, value); }
+        = 9_600;
+
+    /// <summary>Gets or sets the serial data bit count.</summary>
+    public int DataBits { get => field; set => this.RaiseAndSetIfChanged(ref field, value); }
+        = 7;
+
+    /// <summary>Gets or sets the serial parity.</summary>
+    public Parity Parity { get => field; set => this.RaiseAndSetIfChanged(ref field, value); }
+        = Parity.Even;
+
+    /// <summary>Gets or sets the serial stop bits.</summary>
+    public StopBits StopBits { get => field; set => this.RaiseAndSetIfChanged(ref field, value); }
+        = StopBits.Two;
+
+    /// <summary>Gets or sets the serial handshake mode.</summary>
+    public Handshake Handshake { get => field; set => this.RaiseAndSetIfChanged(ref field, value); }
+        = Handshake.None;
+
+    /// <summary>Gets or sets a value indicating whether RTS is enabled.</summary>
+    public bool RtsEnable { get => field; set => this.RaiseAndSetIfChanged(ref field, value); }
+
+    /// <summary>Gets or sets a value indicating whether DTR is enabled.</summary>
+    public bool DtrEnable { get => field; set => this.RaiseAndSetIfChanged(ref field, value); }
+
+    /// <summary>Gets or sets the Host Link unit number.</summary>
+    public byte HostLinkUnitNumber { get => field; set => this.RaiseAndSetIfChanged(ref field, value); }
+
+    /// <summary>Gets or sets the Host Link response wait time.</summary>
+    public byte ResponseWaitTime { get => field; set => this.RaiseAndSetIfChanged(ref field, value); }
+
+    /// <summary>Gets or sets the Host Link FINS frame mode.</summary>
+    public OmronHostLinkFinsFrameMode FrameMode { get => field; set => this.RaiseAndSetIfChanged(ref field, value); }
+        = OmronHostLinkFinsFrameMode.Direct;
+
+    /// <summary>Gets or sets the maximum serial frame length.</summary>
+    public int MaximumFrameLength { get => field; set => this.RaiseAndSetIfChanged(ref field, value); }
+        = 1_004;
+
+    /// <summary>Gets a value indicating whether the serial connection method is selected.</summary>
     public bool IsSerial => Method == ConnectionMethod.Serial;
 
+    /// <summary>Gets a value indicating whether Host Link FINS is selected.</summary>
     public bool IsHostLinkFins => SerialProtocol == OmronSerialProtocol.HostLinkFins;
 
-    public OmronSerialOptions ToSerialOptions() => new(SerialPortName)
+    /// <summary>Creates serial options from the current settings.</summary>
+    /// <returns>The configured serial options.</returns>
+    public OmronSerialOptions ToSerialOptions()
     {
-        Protocol = SerialProtocol,
-        BaudRate = BaudRate,
-        DataBits = DataBits,
-        Parity = Parity,
-        StopBits = StopBits,
-        Handshake = Handshake,
-        RtsEnable = RtsEnable,
-        DtrEnable = DtrEnable,
-        HostLinkUnitNumber = HostLinkUnitNumber,
-        ResponseWaitTime = ResponseWaitTime,
-        FrameMode = FrameMode,
-        MaximumFrameLength = MaximumFrameLength,
-    };
+        var serialPortName = SerialPortName;
+        var protocol = SerialProtocol;
+        var baudRate = BaudRate;
+        var dataBits = DataBits;
+        var parity = Parity;
+        var stopBits = StopBits;
+        var handshake = Handshake;
+        var rtsEnable = RtsEnable;
+        var dtrEnable = DtrEnable;
+        var hostLinkUnitNumber = HostLinkUnitNumber;
+        var responseWaitTime = ResponseWaitTime;
+        var frameMode = FrameMode;
+        var maximumFrameLength = MaximumFrameLength;
+
+        return new(serialPortName)
+        {
+            Protocol = protocol,
+            BaudRate = baudRate,
+            DataBits = dataBits,
+            Parity = parity,
+            StopBits = stopBits,
+            Handshake = handshake,
+            RtsEnable = rtsEnable,
+            DtrEnable = dtrEnable,
+            HostLinkUnitNumber = hostLinkUnitNumber,
+            ResponseWaitTime = responseWaitTime,
+            FrameMode = frameMode,
+            MaximumFrameLength = maximumFrameLength,
+        };
+    }
 }

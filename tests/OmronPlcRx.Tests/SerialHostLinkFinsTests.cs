@@ -75,7 +75,7 @@ public sealed class SerialHostLinkFinsTests
         var options = new OmronSerialOptions("COM1")
         {
             Protocol = OmronSerialProtocol.Toolbus,
-            BaudRate = 115200,
+            BaudRate = 115_200,
             DataBits = 8,
             Parity = Parity.None,
             StopBits = StopBits.One,
@@ -94,7 +94,7 @@ public sealed class SerialHostLinkFinsTests
 
         await Assert.That(options.PortName).IsEqualTo("COM1");
         await Assert.That(options.Protocol).IsEqualTo(OmronSerialProtocol.Toolbus);
-        await Assert.That(options.BaudRate).IsEqualTo(115200);
+        await Assert.That(options.BaudRate).IsEqualTo(115_200);
         await Assert.That(options.DataBits).IsEqualTo(8);
         await Assert.That(options.Parity).IsEqualTo(Parity.None);
         await Assert.That(options.StopBits).IsEqualTo(StopBits.One);
@@ -313,7 +313,7 @@ public sealed class SerialHostLinkFinsTests
         };
         var codec = new HostLinkFinsFrameCodec(options);
         const string payload = "40000001010100001234";
-        var body = "@00FA00" + payload;
+        const string body = "@00FA00" + payload;
         var frame = body + HostLinkFinsFrameCodec.CalculateFcs(body) + "*\r";
 
         var decoded = codec.DecodeResponse(frame);
@@ -345,6 +345,10 @@ public sealed class SerialHostLinkFinsTests
         await Assert.That(ex.Message).Contains("FCS");
     }
 
+    /// <summary>Captures an expected exception from an action.</summary>
+    /// <typeparam name="TException">The expected exception type.</typeparam>
+    /// <param name="action">The action to invoke.</param>
+    /// <returns>The captured exception.</returns>
     private static TException CaptureException<TException>(Action action)
         where TException : Exception
     {

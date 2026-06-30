@@ -149,12 +149,12 @@ internal sealed class UdpClient : IDisposable
     }
 #endif
 
+#if NET6_0_OR_GREATER
     /// <summary>Initializes a new instance of the <see cref="SendAsync"/> class.</summary>
     /// <param name="buffer">The b uf fe r value.</param>
     /// <param name="timeout">The t im eo ut value.</param>
     /// <param name="cancellationToken">The c an ce ll at io nt ok en value.</param>
     /// <returns>A task that represents the asynchronous operation.</returns>
-#if NET6_0_OR_GREATER
     public Task<int> SendAsync(byte[] buffer, TimeSpan timeout, CancellationToken cancellationToken)
     {
         ThrowIfDisposed();
@@ -162,6 +162,11 @@ internal sealed class UdpClient : IDisposable
         return SendAsync(buffer.AsMemory(), timeout, cancellationToken);
     }
 #else
+    /// <summary>Initializes a new instance of the <see cref="SendAsync"/> class.</summary>
+    /// <param name="buffer">The b uf fe r value.</param>
+    /// <param name="timeout">The t im eo ut value.</param>
+    /// <param name="cancellationToken">The c an ce ll at io nt ok en value.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
     public async Task<int> SendAsync(byte[] buffer, TimeSpan timeout, CancellationToken cancellationToken)
     {
         ThrowIfDisposed();
@@ -271,12 +276,12 @@ internal sealed class UdpClient : IDisposable
     }
 #endif
 
+#if NET6_0_OR_GREATER
     /// <summary>Initializes a new instance of the <see cref="ReceiveAsync"/> class.</summary>
     /// <param name="buffer">The b uf fe r value.</param>
     /// <param name="timeout">The t im eo ut value.</param>
     /// <param name="cancellationToken">The c an ce ll at io nt ok en value.</param>
     /// <returns>A task that represents the asynchronous operation.</returns>
-#if NET6_0_OR_GREATER
     public Task<int> ReceiveAsync(byte[] buffer, TimeSpan timeout, CancellationToken cancellationToken)
     {
         ThrowIfDisposed();
@@ -284,6 +289,11 @@ internal sealed class UdpClient : IDisposable
         return ReceiveAsync(buffer.AsMemory(), timeout, cancellationToken);
     }
 #else
+    /// <summary>Initializes a new instance of the <see cref="ReceiveAsync"/> class.</summary>
+    /// <param name="buffer">The b uf fe r value.</param>
+    /// <param name="timeout">The t im eo ut value.</param>
+    /// <param name="cancellationToken">The c an ce ll at io nt ok en value.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
     public async Task<int> ReceiveAsync(byte[] buffer, TimeSpan timeout, CancellationToken cancellationToken)
     {
         ThrowIfDisposed();

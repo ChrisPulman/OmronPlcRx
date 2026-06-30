@@ -38,54 +38,12 @@ internal sealed class OmronPLCConnection : IDisposable
     /// <param name="serialOptions">Serial FINS options when <paramref name="connectionMethod"/> is <see cref="ConnectionMethod.Serial"/>.</param>
     public OmronPLCConnection(byte localNodeId, byte remoteNodeId, ConnectionMethod connectionMethod, string remoteHost, int port = 9600, int timeout = 2000, int retries = 1, OmronSerialOptions? serialOptions = null)
     {
-        if (localNodeId == 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(localNodeId), "The Local Node ID cannot be set to 0");
-        }
-
-        if (localNodeId == 255)
-        {
-            throw new ArgumentOutOfRangeException(nameof(localNodeId), "The Local Node ID cannot be set to 255");
-        }
-
+        OmronPLCConnectionMetadata.ValidateNodeIdentifiers(localNodeId, remoteNodeId, connectionMethod);
         LocalNodeID = localNodeId;
-
-        if (connectionMethod != ConnectionMethod.Serial && remoteNodeId == 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(remoteNodeId), "The Remote Node ID cannot be set to 0 for Ethernet FINS connections");
-        }
-
-        if (remoteNodeId == 255)
-        {
-            throw new ArgumentOutOfRangeException(nameof(remoteNodeId), "The Remote Node ID cannot be set to 255");
-        }
-
-        if (remoteNodeId == localNodeId)
-        {
-            throw new ArgumentException("The Remote Node ID cannot be the same as the Local Node ID", nameof(remoteNodeId));
-        }
-
         RemoteNodeID = remoteNodeId;
-
         ConnectionMethod = connectionMethod;
-
-        if (remoteHost is null)
-        {
-            throw new ArgumentNullException(nameof(remoteHost), "The Remote Host cannot be Null");
-        }
-
-        if (remoteHost.Length == 0)
-        {
-            throw new ArgumentException("The Remote Host cannot be Empty", nameof(remoteHost));
-        }
-
-        RemoteHost = remoteHost;
-
-        if (connectionMethod != ConnectionMethod.Serial && port <= 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(port), "The Port cannot be less than 1");
-        }
-
+        RemoteHost = OmronPLCConnectionMetadata.ValidateRemoteHost(remoteHost);
+        OmronPLCConnectionMetadata.ValidatePort(connectionMethod, port);
         Port = connectionMethod == ConnectionMethod.Serial ? 0 : port;
 
         if (timeout <= 0)
@@ -703,54 +661,10 @@ internal sealed class OmronPLCConnection : IDisposable
 
         var result = ReadCPUUnitDataResponse.ExtractData(requestResult.Response);
 
-        if (result.ControllerModel?.Length > 0)
+        if (!string.IsNullOrEmpty(result.ControllerModel))
         {
             ControllerModel = result.ControllerModel;
-
-            if (ControllerModel.StartsWith("NJ101"))
-            {
-                PLCType = PLCType.NJ101;
-            }
-            else if (ControllerModel.StartsWith("NJ301"))
-            {
-                PLCType = PLCType.NJ301;
-            }
-            else if (ControllerModel.StartsWith("NJ501"))
-            {
-                PLCType = PLCType.NJ501;
-            }
-            else if (ControllerModel.StartsWith("NX1P2"))
-            {
-                PLCType = PLCType.NX1P2;
-            }
-            else if (ControllerModel.StartsWith("NX102"))
-            {
-                PLCType = PLCType.NX102;
-            }
-            else if (ControllerModel.StartsWith("NX701"))
-            {
-                PLCType = PLCType.NX701;
-            }
-            else if (ControllerModel.StartsWith("NJ") || ControllerModel.StartsWith("NX") || ControllerModel.StartsWith("NY"))
-            {
-                PLCType = PLCType.NJ_NX_NY_Series;
-            }
-            else if (ControllerModel.StartsWith("CJ2"))
-            {
-                PLCType = PLCType.CJ2;
-            }
-            else if (ControllerModel.StartsWith("CP1"))
-            {
-                PLCType = PLCType.CP1;
-            }
-            else if (ControllerModel.StartsWith("C"))
-            {
-                PLCType = PLCType.C_Series;
-            }
-            else
-            {
-                PLCType = PLCType.Unknown;
-            }
+            PLCType = OmronPLCConnectionMetadata.GetPLCType(ControllerModel);
         }
 
         if (!(result.ControllerVersion?.Length > 0))

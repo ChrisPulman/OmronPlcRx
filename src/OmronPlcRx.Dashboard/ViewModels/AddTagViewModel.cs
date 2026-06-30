@@ -11,19 +11,11 @@ namespace OmronPlcRxDashboard.ViewModels;
 /// <summary>View model for Add Tag wizard/dialog.</summary>
 public sealed partial class AddTagViewModel : ReactiveObject
 {
+    /// <summary>Matches supported PLC tag address syntax.</summary>
     private static readonly Regex AddressRegex = CreateAddressRegex();
 
-    [GeneratedRegex(@"^(?<area>[A-Za-z]{1,3})(?<word>\d+)(?:\.(?<bit>\d{1,2}))?(?:\[(?<len>\d{1,3})\])?$")]
-    private static partial Regex CreateAddressRegex();
-
-    private string _name = string.Empty;
-    private string _address = string.Empty;
-    private Type _selectedType = typeof(short);
-    private string _validationMessage = string.Empty;
-    private bool _canAccept;
-
     /// <summary>Initializes a new instance of the <see cref="AddTagViewModel"/> class.</summary>
-        /// <param name="allowedTypes">The allowed types value.</param>
+    /// <param name="allowedTypes">The allowed types value.</param>
     public AddTagViewModel(IEnumerable<Type> allowedTypes)
     {
         AllowedTypes = new List<Type>(allowedTypes);
@@ -39,41 +31,50 @@ public sealed partial class AddTagViewModel : ReactiveObject
     /// <summary>Gets or sets the name value.</summary>
     public string Name
     {
-        get => _name;
-        set => this.RaiseAndSetIfChanged(ref _name, value);
-    }
+        get => field;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    } = string.Empty;
 
     /// <summary>Gets or sets the address value.</summary>
     public string Address
     {
-        get => _address;
-        set => this.RaiseAndSetIfChanged(ref _address, value);
-    }
+        get => field;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    } = string.Empty;
 
     /// <summary>Gets or sets the selected type value.</summary>
     public Type SelectedType
     {
-        get => _selectedType;
-        set => this.RaiseAndSetIfChanged(ref _selectedType, value);
-    }
+        get => field;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    } = typeof(short);
 
     /// <summary>Gets the validation message value.</summary>
     public string ValidationMessage
     {
-        get => _validationMessage;
-        private set => this.RaiseAndSetIfChanged(ref _validationMessage, value);
-    }
+        get => field;
+        private set => this.RaiseAndSetIfChanged(ref field, value);
+    } = string.Empty;
 
     /// <summary>Gets the can accept value.</summary>
     public bool CanAccept
     {
-        get => _canAccept;
-        private set => this.RaiseAndSetIfChanged(ref _canAccept, value);
+        get => field;
+        private set => this.RaiseAndSetIfChanged(ref field, value);
     }
 
     /// <summary>Gets the ok command value.</summary>
     public ReactiveCommand<RxVoid, RxVoid> OkCommand { get; }
 
+    /// <summary>Creates the PLC address validation regex.</summary>
+    /// <returns>The generated PLC address regex.</returns>
+    [GeneratedRegex(@"^(?<area>[A-Za-z]{1,3})(?<word>\d+)(?:\.(?<bit>\d{1,2}))?(?:\[(?<len>\d{1,3})\])?$")]
+    private static partial Regex CreateAddressRegex();
+
+    /// <summary>Validates the requested tag name and PLC address.</summary>
+    /// <param name="name">The tag name.</param>
+    /// <param name="address">The PLC address.</param>
+    /// <returns><see langword="true"/> when the tag can be accepted.</returns>
     private bool Validate(string? name, string? address)
     {
         if (string.IsNullOrWhiteSpace(name))
