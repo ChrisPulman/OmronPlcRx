@@ -10,8 +10,5 @@ public class Configuration : Enumeration
     public static implicit operator string(Configuration configuration) =>
         configuration?.Value;
 
-    public string ToString()
-    {
-        throw new System.NotImplementedException();
-    }
+    public override string ToString() => Value;
 }

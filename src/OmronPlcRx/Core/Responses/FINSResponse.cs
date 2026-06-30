@@ -293,8 +293,9 @@ internal sealed class FINSResponse
             return false;
         }
 
-        if (ResponseCodeMessages.TryGetValue(GetResponseCodeKey(mainCode, subCode), out message))
+        if (ResponseCodeMessages.TryGetValue(GetResponseCodeKey(mainCode, subCode), out var responseMessage))
         {
+            message = responseMessage ?? string.Empty;
             return true;
         }
 

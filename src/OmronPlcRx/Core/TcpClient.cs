@@ -188,20 +188,20 @@ internal sealed class TcpClient : IDisposable
     }
 #endif
 
-    /// <summary>Initializes a new instance of the <see cref="Dispose"/> class.</summary>
+    /// <summary>Disposes the TCP client and underlying socket.</summary>
     public void Dispose()
     {
         Dispose(true);
         GC.SuppressFinalize(this);
     }
 
-    /// <summary>Initializes a new instance of the <see cref="ConnectAsync"/> class.</summary>
+    /// <summary>Connects to the remote endpoint with a timeout in milliseconds.</summary>
     /// <param name="timeout">The t im eo ut value.</param>
     /// <param name="cancellationToken">The c an ce ll at io nt ok en value.</param>
     /// <returns>A task that represents the asynchronous operation.</returns>
     public Task ConnectAsync(int timeout, CancellationToken cancellationToken) => ConnectAsync(TimeSpan.FromMilliseconds(timeout), cancellationToken);
 
-    /// <summary>Initializes a new instance of the <see cref="ConnectAsync"/> class.</summary>
+    /// <summary>Connects to the remote endpoint with a timeout.</summary>
     /// <param name="timeout">The t im eo ut value.</param>
     /// <param name="cancellationToken">The c an ce ll at io nt ok en value.</param>
     /// <returns>A task that represents the asynchronous operation.</returns>
@@ -281,13 +281,13 @@ internal sealed class TcpClient : IDisposable
 #endif
     }
 
-    /// <summary>Initializes a new instance of the <see cref="SendAsync"/> class.</summary>
+    /// <summary>Sends bytes with no finite timeout.</summary>
     /// <param name="buffer">The b uf fe r value.</param>
     /// <param name="cancellationToken">The c an ce ll at io nt ok en value.</param>
     /// <returns>A task that represents the asynchronous operation.</returns>
     public Task<int> SendAsync(byte[] buffer, CancellationToken cancellationToken) => SendAsync(buffer, Timeout.InfiniteTimeSpan, cancellationToken);
 
-    /// <summary>Initializes a new instance of the <see cref="SendAsync"/> class.</summary>
+    /// <summary>Sends bytes with a timeout in milliseconds.</summary>
     /// <param name="buffer">The b uf fe r value.</param>
     /// <param name="timeout">The t im eo ut value.</param>
     /// <param name="cancellationToken">The c an ce ll at io nt ok en value.</param>
@@ -295,20 +295,20 @@ internal sealed class TcpClient : IDisposable
     public Task<int> SendAsync(byte[] buffer, int timeout, CancellationToken cancellationToken) => SendAsync(buffer, TimeSpan.FromMilliseconds(timeout), cancellationToken);
 
 #if NET6_0_OR_GREATER
-    /// <summary>Initializes a new instance of the <see cref="SendAsync"/> class.</summary>
+    /// <summary>Sends bytes from read-only memory with no finite timeout.</summary>
     /// <param name="buffer">The b uf fe r value.</param>
     /// <param name="cancellationToken">The c an ce ll at io nt ok en value.</param>
     /// <returns>A task that represents the asynchronous operation.</returns>
     public Task<int> SendAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken) => SendAsync(buffer, Timeout.InfiniteTimeSpan, cancellationToken);
 
-    /// <summary>Initializes a new instance of the <see cref="SendAsync"/> class.</summary>
+    /// <summary>Sends bytes from read-only memory with a timeout in milliseconds.</summary>
     /// <param name="buffer">The b uf fe r value.</param>
     /// <param name="timeout">The t im eo ut value.</param>
     /// <param name="cancellationToken">The c an ce ll at io nt ok en value.</param>
     /// <returns>A task that represents the asynchronous operation.</returns>
     public Task<int> SendAsync(ReadOnlyMemory<byte> buffer, int timeout, CancellationToken cancellationToken) => SendAsync(buffer, TimeSpan.FromMilliseconds(timeout), cancellationToken);
 
-    /// <summary>Initializes a new instance of the <see cref="SendAsync"/> class.</summary>
+    /// <summary>Sends bytes from read-only memory with a timeout.</summary>
     /// <param name="buffer">The b uf fe r value.</param>
     /// <param name="timeout">The t im eo ut value.</param>
     /// <param name="cancellationToken">The c an ce ll at io nt ok en value.</param>
@@ -350,7 +350,7 @@ internal sealed class TcpClient : IDisposable
 #endif
 
 #if NET6_0_OR_GREATER
-    /// <summary>Initializes a new instance of the <see cref="SendAsync"/> class.</summary>
+    /// <summary>Sends bytes with a timeout.</summary>
     /// <param name="buffer">The b uf fe r value.</param>
     /// <param name="timeout">The t im eo ut value.</param>
     /// <param name="cancellationToken">The c an ce ll at io nt ok en value.</param>
@@ -362,7 +362,7 @@ internal sealed class TcpClient : IDisposable
         return SendAsync(buffer.AsMemory(), timeout, cancellationToken);
     }
 #else
-    /// <summary>Initializes a new instance of the <see cref="SendAsync"/> class.</summary>
+    /// <summary>Sends bytes with a timeout.</summary>
     /// <param name="buffer">The b uf fe r value.</param>
     /// <param name="timeout">The t im eo ut value.</param>
     /// <param name="cancellationToken">The c an ce ll at io nt ok en value.</param>
@@ -408,13 +408,13 @@ internal sealed class TcpClient : IDisposable
     }
 #endif
 
-    /// <summary>Initializes a new instance of the <see cref="ReceiveAsync"/> class.</summary>
+    /// <summary>Receives bytes with no finite timeout.</summary>
     /// <param name="buffer">The b uf fe r value.</param>
     /// <param name="cancellationToken">The c an ce ll at io nt ok en value.</param>
     /// <returns>A task that represents the asynchronous operation.</returns>
     public Task<int> ReceiveAsync(byte[] buffer, CancellationToken cancellationToken) => ReceiveAsync(buffer, Timeout.InfiniteTimeSpan, cancellationToken);
 
-    /// <summary>Initializes a new instance of the <see cref="ReceiveAsync"/> class.</summary>
+    /// <summary>Receives bytes with a timeout in milliseconds.</summary>
     /// <param name="buffer">The b uf fe r value.</param>
     /// <param name="timeout">The t im eo ut value.</param>
     /// <param name="cancellationToken">The c an ce ll at io nt ok en value.</param>
@@ -422,20 +422,20 @@ internal sealed class TcpClient : IDisposable
     public Task<int> ReceiveAsync(byte[] buffer, int timeout, CancellationToken cancellationToken) => ReceiveAsync(buffer, TimeSpan.FromMilliseconds(timeout), cancellationToken);
 
 #if NET6_0_OR_GREATER
-    /// <summary>Initializes a new instance of the <see cref="ReceiveAsync"/> class.</summary>
+    /// <summary>Receives bytes into memory with no finite timeout.</summary>
     /// <param name="buffer">The b uf fe r value.</param>
     /// <param name="cancellationToken">The c an ce ll at io nt ok en value.</param>
     /// <returns>A task that represents the asynchronous operation.</returns>
     public Task<int> ReceiveAsync(Memory<byte> buffer, CancellationToken cancellationToken) => ReceiveAsync(buffer, Timeout.InfiniteTimeSpan, cancellationToken);
 
-    /// <summary>Initializes a new instance of the <see cref="ReceiveAsync"/> class.</summary>
+    /// <summary>Receives bytes into memory with a timeout in milliseconds.</summary>
     /// <param name="buffer">The b uf fe r value.</param>
     /// <param name="timeout">The t im eo ut value.</param>
     /// <param name="cancellationToken">The c an ce ll at io nt ok en value.</param>
     /// <returns>A task that represents the asynchronous operation.</returns>
     public Task<int> ReceiveAsync(Memory<byte> buffer, int timeout, CancellationToken cancellationToken) => ReceiveAsync(buffer, TimeSpan.FromMilliseconds(timeout), cancellationToken);
 
-    /// <summary>Initializes a new instance of the <see cref="ReceiveAsync"/> class.</summary>
+    /// <summary>Receives bytes into memory with a timeout.</summary>
     /// <param name="buffer">The b uf fe r value.</param>
     /// <param name="timeout">The t im eo ut value.</param>
     /// <param name="cancellationToken">The c an ce ll at io nt ok en value.</param>
@@ -477,7 +477,7 @@ internal sealed class TcpClient : IDisposable
 #endif
 
 #if NET6_0_OR_GREATER
-    /// <summary>Initializes a new instance of the <see cref="ReceiveAsync"/> class.</summary>
+    /// <summary>Receives bytes into an array with a timeout.</summary>
     /// <param name="buffer">The b uf fe r value.</param>
     /// <param name="timeout">The t im eo ut value.</param>
     /// <param name="cancellationToken">The c an ce ll at io nt ok en value.</param>
@@ -489,7 +489,7 @@ internal sealed class TcpClient : IDisposable
         return ReceiveAsync(buffer.AsMemory(), timeout, cancellationToken);
     }
 #else
-    /// <summary>Initializes a new instance of the <see cref="ReceiveAsync"/> class.</summary>
+    /// <summary>Receives bytes into an array with a timeout.</summary>
     /// <param name="buffer">The b uf fe r value.</param>
     /// <param name="timeout">The t im eo ut value.</param>
     /// <param name="cancellationToken">The c an ce ll at io nt ok en value.</param>
@@ -567,7 +567,7 @@ internal sealed class TcpClient : IDisposable
     }
 #endif
 
-    /// <summary>Initializes a new instance of the <see cref="Dispose"/> class.</summary>
+    /// <summary>Releases managed resources used by the TCP client.</summary>
     /// <param name="disposing">The d is po si ng value.</param>
     private void Dispose(bool disposing)
     {
@@ -597,7 +597,7 @@ internal sealed class TcpClient : IDisposable
         _disposed = true;
     }
 
-    /// <summary>Initializes a new instance of the <see cref="ThrowIfDisposed"/> class.</summary>
+    /// <summary>Throws if the TCP client has been disposed.</summary>
     private void ThrowIfDisposed()
     {
         if (!_disposed)
