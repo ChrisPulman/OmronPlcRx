@@ -56,6 +56,16 @@ public sealed record OmronSerialOptions
     public Handshake Handshake { get; init; } = Handshake.None;
 
     /// <summary>
+    /// Gets a value indicating whether the serial RTS signal is asserted.
+    /// </summary>
+    public bool RtsEnable { get; init; }
+
+    /// <summary>
+    /// Gets a value indicating whether the serial DTR signal is asserted.
+    /// </summary>
+    public bool DtrEnable { get; init; }
+
+    /// <summary>
     /// Gets the serial FINS carrier protocol.
     /// </summary>
     public OmronSerialProtocol Protocol { get; init; } = OmronSerialProtocol.HostLinkFins;
@@ -93,6 +103,8 @@ public sealed record OmronSerialOptions
         Parity = Parity.None,
         StopBits = StopBits.One,
         Handshake = Handshake.None,
+        RtsEnable = true,
+        DtrEnable = false,
         MaximumFrameLength = 1004,
     };
 

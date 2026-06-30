@@ -16,10 +16,8 @@ internal sealed class SerialHostLinkFinsChannel : BaseChannel
 {
     private readonly OmronSerialOptions _options;
     private readonly ConcurrentQueue<byte> _receivedBytes = new();
-    private readonly SemaphoreSlim _receivedSignal = new(0, int.MaxValue);
     private SerialPortRx? _port;
     private HostLinkFinsFrameCodec? _hostLinkCodec;
-    private IDisposable? _receivedSubscription;
 
     internal SerialHostLinkFinsChannel(OmronSerialOptions options)
         : base(options?.PortName ?? throw new ArgumentNullException(nameof(options)), 0)
@@ -32,17 +30,14 @@ internal sealed class SerialHostLinkFinsChannel : BaseChannel
     {
         try
         {
-            _receivedSubscription?.Dispose();
             _port?.Close();
             _port?.Dispose();
-            _receivedSignal.Dispose();
         }
         catch
         {
         }
         finally
         {
-            _receivedSubscription = null;
             _port = null;
         }
 
@@ -221,20 +216,18 @@ internal sealed class SerialHostLinkFinsChannel : BaseChannel
         _hostLinkCodec = _options.Protocol == OmronSerialProtocol.HostLinkFins ? new HostLinkFinsFrameCodec(_options) : null;
         _port = new SerialPortRx(_options.PortName, _options.BaudRate, _options.DataBits, _options.Parity, _options.StopBits, _options.Handshake)
         {
-            EnableAutoDataReceive = true,
+            EnableAutoDataReceive = false,
             ReadTimeout = timeout,
             WriteTimeout = timeout,
             ReceivedBytesThreshold = 1,
             NewLine = "\r",
+            RtsEnable = _options.RtsEnable,
+            DtrEnable = _options.DtrEnable,
         };
 
-        _receivedSubscription = _port.DataReceivedBytes.Subscribe(value =>
-        {
-            _receivedBytes.Enqueue(value);
-            _receivedSignal.Release();
-        });
-
         await _port.Open().ConfigureAwait(false);
+        _port.RtsEnable = _options.RtsEnable;
+        _port.DtrEnable = _options.DtrEnable;
         if (_options.Protocol == OmronSerialProtocol.Toolbus)
         {
             await SynchronizeToolbusAsync(timeout, cancellationToken).ConfigureAwait(false);
@@ -288,18 +281,44 @@ internal sealed class SerialHostLinkFinsChannel : BaseChannel
 
     private async Task<bool> WaitForSerialDataAsync(DateTime startTimestamp, int timeout, CancellationToken cancellationToken)
     {
+        if (PumpReceiveBuffer() > 0)
+        {
+            return true;
+        }
+
         var remaining = timeout - (int)DateTime.UtcNow.Subtract(startTimestamp).TotalMilliseconds;
         if (remaining <= 0)
         {
             return false;
         }
 
-        if (!await _receivedSignal.WaitAsync(Math.Min(remaining, 50), cancellationToken).ConfigureAwait(false))
-        {
-            await Task.Yield();
-        }
+        await Task.Delay(Math.Min(remaining, 20), cancellationToken).ConfigureAwait(false);
+        PumpReceiveBuffer();
 
         return true;
+    }
+
+    private int PumpReceiveBuffer()
+    {
+        if (_port == null)
+        {
+            return 0;
+        }
+
+        var totalRead = 0;
+        while (_port.BytesToRead > 0)
+        {
+            var buffer = new byte[_port.BytesToRead];
+            var read = _port.Read(buffer, 0, buffer.Length);
+            for (var i = 0; i < read; i++)
+            {
+                _receivedBytes.Enqueue(buffer[i]);
+            }
+
+            totalRead += read;
+        }
+
+        return totalRead;
     }
 
     private HostLinkFinsFrameCodec GetHostLinkCodec() => _hostLinkCodec ?? throw new OmronPLCException($"The serial Host Link FINS codec for '{RemoteHost}' is not initialized.");
@@ -308,13 +327,11 @@ internal sealed class SerialHostLinkFinsChannel : BaseChannel
     {
         try
         {
-            _receivedSubscription?.Dispose();
             _port?.Close();
             _port?.Dispose();
         }
         finally
         {
-            _receivedSubscription = null;
             _port = null;
             ClearReceiveQueue();
         }
@@ -323,10 +340,6 @@ internal sealed class SerialHostLinkFinsChannel : BaseChannel
     private void ClearReceiveQueue()
     {
         while (_receivedBytes.TryDequeue(out _))
-        {
-        }
-
-        while (_receivedSignal.Wait(0))
         {
         }
     }

@@ -27,6 +27,8 @@ public sealed class SerialHostLinkFinsTests
         await Assert.That(options.Parity).IsEqualTo(Parity.Even);
         await Assert.That(options.StopBits).IsEqualTo(StopBits.Two);
         await Assert.That(options.Handshake).IsEqualTo(Handshake.None);
+        await Assert.That(options.RtsEnable).IsFalse();
+        await Assert.That(options.DtrEnable).IsFalse();
         await Assert.That(options.Protocol).IsEqualTo(OmronSerialProtocol.HostLinkFins);
         await Assert.That(options.HostLinkUnitNumber).IsEqualTo((byte)0);
         await Assert.That(options.ResponseWaitTime).IsEqualTo((byte)0);
@@ -83,6 +85,8 @@ public sealed class SerialHostLinkFinsTests
         await Assert.That(options.Parity).IsEqualTo(Parity.None);
         await Assert.That(options.StopBits).IsEqualTo(StopBits.One);
         await Assert.That(options.Handshake).IsEqualTo(Handshake.None);
+        await Assert.That(options.RtsEnable).IsTrue();
+        await Assert.That(options.DtrEnable).IsFalse();
         await Assert.That(options.MaximumFrameLength).IsEqualTo(1004);
     }
 

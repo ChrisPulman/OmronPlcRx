@@ -285,7 +285,7 @@ public sealed class OmronPlcRx : IOmronPlcRx
         if (dotIndex >= 0)
         {
             basePart = baseForParse.Substring(0, dotIndex);
-            bitPart = baseForParse[(dotIndex + 1)..];
+            bitPart = baseForParse.Substring(dotIndex + 1);
         }
         else
         {
@@ -318,8 +318,8 @@ public sealed class OmronPlcRx : IOmronPlcRx
             throw new FormatException($"No numeric portion in address '{address}'");
         }
 
-        var area = basePart[..firstDigit].ToUpperInvariant();
-        var numberPart = basePart[firstDigit..];
+        var area = basePart.Substring(0, firstDigit).ToUpperInvariant();
+        var numberPart = basePart.Substring(firstDigit);
         if (!ushort.TryParse(numberPart, out var addr))
         {
             throw new FormatException($"Invalid numeric address in '{address}'");

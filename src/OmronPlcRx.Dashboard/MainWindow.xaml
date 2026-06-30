@@ -263,6 +263,18 @@
                     Grid.Row="3"
                     Grid.Column="13"
                     Text="{Binding Settings.MaximumFrameLength, UpdateSourceTrigger=PropertyChanged}" />
+                <CheckBox
+                    Grid.Row="3"
+                    Grid.Column="15"
+                    VerticalAlignment="Center"
+                    Content="RTS"
+                    IsChecked="{Binding Settings.RtsEnable}" />
+                <CheckBox
+                    Grid.Row="3"
+                    Grid.Column="16"
+                    VerticalAlignment="Center"
+                    Content="DTR"
+                    IsChecked="{Binding Settings.DtrEnable}" />
 
                 <TextBlock
                     Grid.Row="4"

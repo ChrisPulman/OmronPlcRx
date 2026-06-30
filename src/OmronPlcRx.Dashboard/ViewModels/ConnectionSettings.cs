@@ -24,6 +24,8 @@ public sealed class ConnectionSettings : ReactiveObject
     private Parity _parity = Parity.Even;
     private StopBits _stopBits = StopBits.Two;
     private Handshake _handshake = Handshake.None;
+    private bool _rtsEnable;
+    private bool _dtrEnable;
     private byte _hostLinkUnitNumber;
     private byte _responseWaitTime;
     private OmronHostLinkFinsFrameMode _frameMode = OmronHostLinkFinsFrameMode.Direct;
@@ -83,6 +85,8 @@ public sealed class ConnectionSettings : ReactiveObject
                 Parity = Parity.None;
                 StopBits = StopBits.One;
                 Handshake = Handshake.None;
+                RtsEnable = true;
+                DtrEnable = false;
                 RemoteNodeId = 0;
                 MaximumFrameLength = 1004;
             }
@@ -96,6 +100,8 @@ public sealed class ConnectionSettings : ReactiveObject
     public Parity Parity { get => _parity; set => this.RaiseAndSetIfChanged(ref _parity, value); }
     public StopBits StopBits { get => _stopBits; set => this.RaiseAndSetIfChanged(ref _stopBits, value); }
     public Handshake Handshake { get => _handshake; set => this.RaiseAndSetIfChanged(ref _handshake, value); }
+    public bool RtsEnable { get => _rtsEnable; set => this.RaiseAndSetIfChanged(ref _rtsEnable, value); }
+    public bool DtrEnable { get => _dtrEnable; set => this.RaiseAndSetIfChanged(ref _dtrEnable, value); }
     public byte HostLinkUnitNumber { get => _hostLinkUnitNumber; set => this.RaiseAndSetIfChanged(ref _hostLinkUnitNumber, value); }
     public byte ResponseWaitTime { get => _responseWaitTime; set => this.RaiseAndSetIfChanged(ref _responseWaitTime, value); }
     public OmronHostLinkFinsFrameMode FrameMode { get => _frameMode; set => this.RaiseAndSetIfChanged(ref _frameMode, value); }
@@ -111,6 +117,8 @@ public sealed class ConnectionSettings : ReactiveObject
         Parity = Parity,
         StopBits = StopBits,
         Handshake = Handshake,
+        RtsEnable = RtsEnable,
+        DtrEnable = DtrEnable,
         HostLinkUnitNumber = HostLinkUnitNumber,
         ResponseWaitTime = ResponseWaitTime,
         FrameMode = FrameMode,

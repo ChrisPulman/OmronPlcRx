@@ -76,8 +76,8 @@ public static class ToolbusFinsFrameCodec
             throw new OmronPLCException($"The Toolbus response frame length {frame.Length} did not match declared length {declaredLength}.");
         }
 
-        var expectedChecksum = CalculateChecksum(span[..^2]);
-        var receivedChecksum = (ushort)((span[^2] << 8) | span[^1]);
+        var expectedChecksum = CalculateChecksum(span.Slice(0, frame.Length - 2));
+        var receivedChecksum = (ushort)((span[frame.Length - 2] << 8) | span[frame.Length - 1]);
         if (expectedChecksum != receivedChecksum)
         {
             throw new OmronPLCException($"The Toolbus response checksum was invalid. Expected 0x{expectedChecksum:X4}, received 0x{receivedChecksum:X4}.");
