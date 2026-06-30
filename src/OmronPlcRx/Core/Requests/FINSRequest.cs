@@ -1,5 +1,6 @@
-﻿// Copyright (c) Chris Pulman. All rights reserved.
-// Licensed under the MIT license. See LICENSE file in the project root for full license information.
+// Copyright (c) 2022-2026 Chris Pulman. All rights reserved.
+// Chris Pulman licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for full license information.
 
 using System;
 using System.Collections.Generic;
@@ -7,11 +8,17 @@ using OmronPlcRx.Core.Channels;
 
 namespace OmronPlcRx.Core.Requests;
 
+/// <summary>Represents the f in sr eq ue st type.</summary>
 internal abstract class FINSRequest
 {
+    /// <summary>Stores the h ea de rl en gt h value.</summary>
     internal const int HeaderLength = 10;
+
+    /// <summary>Stores the c om ma nd le ng th value.</summary>
     internal const int CommandLength = 2;
 
+    /// <summary>Initializes a new instance of the <see cref="FINSRequest"/> class.</summary>
+    /// <param name="plc">The p lc value.</param>
     protected FINSRequest(OmronPLCConnection plc)
     {
         if (plc.Channel is TCPChannel tCPChannel)
@@ -26,16 +33,24 @@ internal abstract class FINSRequest
         }
     }
 
+    /// <summary>Gets the local node id value.</summary>
     internal byte LocalNodeID { get; }
 
+    /// <summary>Gets the remote node id value.</summary>
     internal byte RemoteNodeID { get; }
 
+    /// <summary>Gets or sets the service id value.</summary>
     internal byte ServiceID { get; set; }
 
+    /// <summary>Gets or sets the function code value.</summary>
     internal byte FunctionCode { get; set; }
 
+    /// <summary>Gets or sets the sub function code value.</summary>
     internal byte SubFunctionCode { get; set; }
 
+    /// <summary>Initializes a new instance of the <see cref="BuildMessage"/> class.</summary>
+    /// <param name="requestId">The r eq ue st id value.</param>
+    /// <returns>The result produced by the operation.</returns>
     internal ReadOnlyMemory<byte> BuildMessage(byte requestId)
     {
         ServiceID = requestId;
@@ -88,5 +103,7 @@ internal abstract class FINSRequest
         return new ReadOnlyMemory<byte>([.. message]);
     }
 
+    /// <summary>Initializes a new instance of the <see cref="BuildRequestData"/> class.</summary>
+    /// <returns>The result produced by the operation.</returns>
     protected abstract List<byte> BuildRequestData();
 }

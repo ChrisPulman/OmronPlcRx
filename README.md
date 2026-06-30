@@ -1,8 +1,12 @@
-﻿# OmronPlcRx
+# OmronPlcRx
 
-A Reactive Omron PLC communications library for .NET (`netstandard2.0`, `net8.0`, `net9.0`, `net10.0`).
+<div align="center">
+  <img src="Images/OmronPLCRx-icon.png" style="width:25%;" />
+</div>
 
-OmronPlcRx provides a high-level, reactive, strongly typed interface for interacting with Omron PLCs over the FINS protocol using TCP or UDP. It handles:
+A Reactive Omron PLC communications library for .NET (`net462`, `net472`, `net481`, `net8.0`, `net9.0`, `net10.0`).
+
+OmronPlcRx provides a high-level, reactive, strongly typed interface for interacting with Omron PLCs over the FINS protocol using TCP, UDP, serial Host Link FINS, or serial Toolbus FINS. It handles:
 
 - Connection setup & initialization (controller model / version discovery)
 - Bit and word memory area reads & writes
@@ -20,20 +24,25 @@ Contents:
 - Supported Types & Encoding
 - BCD Types
 - Reactive Tag & System API
+- ReactiveUI.Primitives Async Observables
+- Source Generated Reactive Streams
 - Code Samples
 - Direct Read/Write Core API Overview
 - PLC Clock & Cycle Time
 - Error Handling
 - PLC Types & Limits
+- Testing
 - FAQ
 - Contributing
 - License / Disclaimer
 
 ---
 ## Features
-- TCP or UDP transport selection
+- TCP, UDP, Serial Host Link FINS, or Serial Toolbus FINS transport selection
 - Automatic controller identification (model, version, PLC type classification)
 - Reactive `IObservable<T>` streams per tag and an aggregate stream of all tag changes
+- ReactiveUI.Primitives.Async `IObservableAsync<T>` adapters
+- Source generator support for strongly typed PLC tag properties and observable streams
 - Background polling loop with configurable interval (default 100 ms)
 - Safe concurrent access with internal caching
 - Strong typing for tag values; built-in conversion for common primitives & BCD wrappers
@@ -57,10 +66,10 @@ Install-Package OmronPlcRx
 ## Quick Start
 ```csharp
 using System;
-using System.Reactive.Linq;
 using OmronPlcRx;
 using OmronPlcRx.Enums;
 using OmronPlcRx.Core.Types; // BCD wrappers
+using ReactiveUI.Primitives;
 
 class Program
 {
@@ -91,14 +100,14 @@ class Program
         // Observe single tag
         var sub1 = plc.Observe<bool>("MotorRun")
             .DistinctUntilChanged()
-            .Subscribe(v => Console.WriteLine($"MotorRun -> {v}"));
+            .SubscribeSafe(v => Console.WriteLine($"MotorRun -> {v}"), ex => Console.WriteLine(ex.Message));
 
         // Observe all tag changes
         var subAll = plc.ObserveAll
-            .Subscribe(tag => Console.WriteLine($"Tag {tag?.TagName} = {tag?.Value}"));
+            .SubscribeSafe(tag => Console.WriteLine($"Tag {tag?.TagName} = {tag?.Value}"), ex => Console.WriteLine(ex.Message));
 
         // Observe errors
-        var errSub = plc.Errors.Subscribe(e => Console.WriteLine($"ERROR: {e?.Message}"));
+        var errSub = plc.Errors.SubscribeSafe(e => Console.WriteLine($"ERROR: {e?.Message}"), ex => Console.WriteLine(ex.Message));
 
         // Write (async fire-and-forget)
         plc.Value("MotorRun", true);
@@ -120,6 +129,68 @@ class Program
     }
 }
 ```
+
+### Serial FINS quick start
+
+Use serial Host Link FINS for PLCs such as CS/CJ/CP units configured for Host Link communications on RS-232C or RS-422A/485 serial ports.
+
+```csharp
+using System;
+using System.IO.Ports;
+using OmronPlcRx;
+
+var plc = new OmronPlcRx.OmronPlcRx(
+    localNodeId: 11,
+    remoteNodeId: 0,
+    serialOptions: new OmronSerialOptions("COM3")
+    {
+        BaudRate = 9600,
+        DataBits = 7,
+        Parity = Parity.Even,
+        StopBits = StopBits.Two,
+        Handshake = Handshake.None,
+        HostLinkUnitNumber = 0,
+        ResponseWaitTime = 0,
+        FrameMode = OmronHostLinkFinsFrameMode.Direct,
+    },
+    timeout: 2000,
+    retries: 1,
+    pollInterval: TimeSpan.FromMilliseconds(200));
+
+plc.AddUpdateTagItem<short>("D100", "LegacyValue");
+plc.Observe<short>("LegacyValue")
+   .SubscribeSafe(value => Console.WriteLine($"D100 -> {value}"), ex => Console.WriteLine(ex.Message));
+```
+
+Use Toolbus when the PLC serial port is configured for Omron Toolbus. `CreateToolbus` applies the common `115200 8N1` Toolbus settings.
+
+```csharp
+using System;
+using OmronPlcRx;
+
+var plc = new OmronPlcRx.OmronPlcRx(
+    localNodeId: 11,
+    remoteNodeId: 0,
+    serialOptions: OmronSerialOptions.CreateToolbus("COM3"),
+    timeout: 2000,
+    retries: 1,
+    pollInterval: TimeSpan.FromMilliseconds(200));
+
+plc.AddUpdateTagItem<short>("D100", "ToolbusValue");
+plc.Observe<short>("ToolbusValue")
+   .SubscribeSafe(value => Console.WriteLine($"D100 -> {value}"), ex => Console.WriteLine(ex.Message));
+```
+
+Serial notes:
+
+- The dashboard exposes serial settings for port, protocol, baud rate, data bits, parity, stop bits, handshake, Host Link unit, response wait, frame mode, and maximum frame length.
+- For direct CPU FINS serial testing where the target is network `0`, node `0`, unit `0`, select `Serial` and set `Remote` to `0`; the default maximum frame length is `1004` bytes and the default timeout remains `2000` ms.
+- Select Toolbus in the dashboard to apply the common `115200 8N1` settings, no handshake, remote node `0`, and maximum frame length `1004`.
+- Toolbus performs an `AC 01` synchronization before normal traffic, then carries binary FINS messages in `0xAB` frames with a two-byte length and 16-bit additive checksum.
+- `OmronHostLinkFinsFrameMode.Direct` emits the Host Link FINS direct CPU format: `@` + unit number + `FA` + response wait time + `ICF/DA2/SA2/SID` + command/text + FCS + `*\r`.
+- `OmronHostLinkFinsFrameMode.Network` is available for full-header Host Link FINS routing scenarios.
+- For Host Link FINS, the PLC serial port must be configured for compatible baud rate, parity, data bits, stop bits, handshake, and Host Link unit number.
+- Classic C-mode Host Link commands remain separate from these FINS serial transports and are not implemented.
 
 ---
 ## Addressing Guide
@@ -169,7 +240,7 @@ Example:
 ```csharp
 plc.AddUpdateTagItem<Bcd32>("D800", "BatchNumber");
 plc.Observe<Bcd32>("BatchNumber")
-   .Subscribe(v => Console.WriteLine($"BatchNumber -> {v?.Value}"));
+   .SubscribeSafe(v => Console.WriteLine($"BatchNumber -> {v.Value}"), ex => Console.WriteLine(ex.Message));
 plc.Value("BatchNumber", new Bcd32(12345678));
 ```
 
@@ -189,6 +260,76 @@ Methods / Properties:
 Clock/cycle methods return strongly typed result structs (Bytes/Packets sent/received, Duration and payload data).
 
 ---
+## ReactiveUI.Primitives Async Observables
+Supported builds include adapters for the ReactiveUI.Primitives.Async observable API.
+
+```csharp
+using OmronPlcRx.Async;
+using ReactiveUI.Primitives.Async;
+
+plc.AddUpdateTagItem<bool>("D100.0", "MotorRun");
+
+IObservableAsync<bool?> motorRunStream = plc.ObserveAsAsyncObservable<bool>("MotorRun");
+
+await foreach (var value in plc.ObserveValuesAsync<bool>("MotorRun", cancellationToken))
+{
+    Console.WriteLine($"MotorRun -> {value}");
+}
+```
+
+Available adapters:
+
+- `ObserveAsAsyncObservable<T>(tagName)` converts a typed tag stream to `IObservableAsync<T?>`.
+- `ObserveAllAsAsyncObservable()` converts the aggregate tag stream to `IObservableAsync<IPlcTag?>`.
+- `ErrorsAsAsyncObservable()` converts the operational error stream to `IObservableAsync<OmronPLCException?>`.
+- `ObserveValuesAsync<T>(tagName, cancellationToken)` exposes a tag stream as `IAsyncEnumerable<T?>`.
+
+The async surface bridges the existing polling loop, so current `IObservable<T>` behavior remains unchanged for all target frameworks.
+
+---
+## Source Generated Reactive Streams
+Annotate fields in a partial class with `[PlcTag]` to generate registration, binding, properties, and observable streams.
+
+```csharp
+using OmronPlcRx;
+
+public sealed partial class MachineTags
+{
+    [PlcTag("D100.0", Writable = true)]
+    private bool _motorRun;
+
+    [PlcTag("D200")]
+    private short _temperatureRaw;
+
+    [PlcTag("D600[20]")]
+    private string? _lineName;
+}
+```
+
+Generated members include:
+
+- `MotorRun`, `TemperatureRaw`, and `LineName` properties.
+- `MotorRunObservable`, `TemperatureRawObservable`, and `LineNameObservable`.
+- `MotorRunObservableAsync` and matching async observables on `net8.0+`.
+- `RegisterPlcTags(IOmronPlcRx plc)`.
+- `BindPlcTags(IOmronPlcRx plc)`, which registers tags and updates properties when PLC data arrives.
+- `WriteMotorRun(IOmronPlcRx plc, bool value)` for tags marked `Writable = true`.
+- Partial hooks such as `partial void OnMotorRunReceived(bool value);`.
+
+Usage:
+
+```csharp
+var tags = new MachineTags();
+using var binding = tags.BindPlcTags(plc);
+using var subscription = tags.TemperatureRawObservable
+    .SubscribeSafe(value => Console.WriteLine($"Raw temperature -> {value}"), ex => Console.WriteLine(ex.Message));
+
+tags.WriteMotorRun(plc, true);
+```
+
+Generated streams use the same supported tag types as the runtime: `bool`, `byte`, `short`, `ushort`, `int`, `uint`, `float`, `double`, `string`, `Bcd16`, `BcdU16`, `Bcd32`, and `BcdU32`.
+
+---
 ## Code Samples
 1. Mirror / inverted control
 ```csharp
@@ -196,7 +337,7 @@ plc.AddUpdateTagItem<bool>("D10.0", "SourceFlag");
 plc.AddUpdateTagItem<bool>("D11.0", "TargetFlag");
 plc.Observe<bool>("SourceFlag")
    .DistinctUntilChanged()
-   .Subscribe(v => plc.Value("TargetFlag", !v));
+   .SubscribeSafe(v => plc.Value("TargetFlag", !v), ex => Console.WriteLine(ex.Message));
 ```
 
 2. Unsigned counter & rollover detection
@@ -204,11 +345,11 @@ plc.Observe<bool>("SourceFlag")
 plc.AddUpdateTagItem<uint>("D300", "PulseCounter");
 plc.Observe<uint>("PulseCounter")
    .Pairwise()
-   .Subscribe(p =>
+   .SubscribeSafe(p =>
    {
        var (prev, curr) = (p.FirstOrDefault(), p.Last());
        if (curr < prev) Console.WriteLine("Counter rollover detected");
-   });
+   }, ex => Console.WriteLine(ex.Message));
 ```
 
 3. BCD production count
@@ -216,7 +357,7 @@ plc.Observe<uint>("PulseCounter")
 plc.AddUpdateTagItem<Bcd32>("D500", "ProdCount");
 plc.Observe<Bcd32>("ProdCount")
    .DistinctUntilChanged()
-   .Subscribe(v => Console.WriteLine($"Production Count = {v?.Value}"));
+   .SubscribeSafe(v => Console.WriteLine($"Production Count = {v.Value}"), ex => Console.WriteLine(ex.Message));
 ```
 
 4. Double precision accumulation
@@ -224,7 +365,7 @@ plc.Observe<Bcd32>("ProdCount")
 plc.AddUpdateTagItem<double>("D600", "EnergyKWh");
 plc.Observe<double>("EnergyKWh")
    .Sample(TimeSpan.FromSeconds(5))
-   .Subscribe(v => Console.WriteLine($"Energy = {v:F3} kWh"));
+   .SubscribeSafe(v => Console.WriteLine($"Energy = {v:F3} kWh"), ex => Console.WriteLine(ex.Message));
 ```
 
 5. ASCII string with fixed length
@@ -233,7 +374,7 @@ plc.AddUpdateTagItem<string>("D700[16]", "OperatorName");
 plc.Value("OperatorName", "ALICE");
 plc.Observe<string>("OperatorName")
    .DistinctUntilChanged()
-   .Subscribe(n => Console.WriteLine($"Operator = {n}"));
+   .SubscribeSafe(n => Console.WriteLine($"Operator = {n}"), ex => Console.WriteLine(ex.Message));
 ```
 
 6. Byte & UShort handling
@@ -271,7 +412,7 @@ Returned structs include transmission statistics and payload data.
 ## Error Handling
 Operational exceptions (initialization failure, invalid address, read/write errors, unsupported type) are pushed into `Errors`:
 ```csharp
-plc.Errors.Subscribe(e => Console.WriteLine($"[PLC ERR] {e?.Message}"));
+plc.Errors.SubscribeSafe(e => Console.WriteLine($"[PLC ERR] {e?.Message}"), ex => Console.WriteLine(ex.Message));
 ```
 Write errors also surface here because `Value<T>(...)` is fire-and-forget.
 
@@ -280,6 +421,14 @@ Write errors also surface here because `Value<T>(...)` is fire-and-forget.
 Controller type is inferred automatically. Impacts maximum read/write word lengths & area availability.
 
 `PLCType` enum includes: `CP1`, `CJ2`, `NJ101`, `NJ301`, `NJ501`, `NX1P2`, `NX102`, `NX701`, `NY512`, `NY532`, `NJ_NX_NY_Series`, `C_Series`, `Unknown`.
+
+---
+## Testing
+The test suite uses TUnit on Microsoft.Testing.Platform.
+
+```bash
+dotnet test tests/OmronPlcRx.Tests/OmronPlcRx.Tests.csproj --framework net10.0
+```
 
 ---
 ## FAQ

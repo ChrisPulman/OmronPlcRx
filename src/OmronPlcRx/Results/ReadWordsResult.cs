@@ -1,28 +1,27 @@
-﻿// Copyright (c) Chris Pulman. All rights reserved.
-// Licensed under the MIT license. See LICENSE file in the project root for full license information.
+// Copyright (c) 2022-2026 Chris Pulman. All rights reserved.
+// Chris Pulman licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for full license information.
 
 namespace OmronPlcRx.Results;
 
-/// <summary>
-/// Result of a Read Words operation.
-/// </summary>
+/// <summary>Result of a Read Words operation.</summary>
 public readonly record struct ReadWordsResult
 {
-    /// <summary>Gets the total bytes sent.</summary>
+    /// <summary>Gets or sets the bytes sent value.</summary>
     public int BytesSent { get; init; }
 
-    /// <summary>Gets the total packets sent.</summary>
+    /// <summary>Gets or sets the packets sent value.</summary>
     public int PacketsSent { get; init; }
 
-    /// <summary>Gets the total bytes received.</summary>
+    /// <summary>Gets or sets the bytes received value.</summary>
     public int BytesReceived { get; init; }
 
-    /// <summary>Gets the total packets received.</summary>
+    /// <summary>Gets or sets the packets received value.</summary>
     public int PacketsReceived { get; init; }
 
-    /// <summary>Gets the duration in milliseconds.</summary>
+    /// <summary>Gets or sets the duration value.</summary>
     public double Duration { get; init; }
 
-    /// <summary>Gets the word values read.</summary>
+    /// <summary>Gets or sets the values value.</summary>
     public short[] Values { get; init; }
 }

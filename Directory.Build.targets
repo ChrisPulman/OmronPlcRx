@@ -1,0 +1,16 @@
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Target Name="RemoveGeneratedBridgeAnalyzers"
+          AfterTargets="ResolvePackageAssets"
+          BeforeTargets="CoreCompile;Csc">
+    <ItemGroup>
+      <ResolvedAnalyzers Remove="@(ResolvedAnalyzers)"
+                         Condition="'%(ResolvedAnalyzers.Filename)' == 'ReactiveUI.Primitives.R3Bridge.Generator'" />
+      <Analyzer Remove="@(Analyzer)"
+                Condition="'%(Analyzer.Filename)' == 'ReactiveUI.Primitives.R3Bridge.Generator'" />
+      <ResolvedAnalyzers Remove="@(ResolvedAnalyzers)"
+                         Condition="'%(ResolvedAnalyzers.Filename)' == 'SerialPortRx.SourceGenerators'" />
+      <Analyzer Remove="@(Analyzer)"
+                Condition="'%(Analyzer.Filename)' == 'SerialPortRx.SourceGenerators'" />
+    </ItemGroup>
+  </Target>
+</Project>

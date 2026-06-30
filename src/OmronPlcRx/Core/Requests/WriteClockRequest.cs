@@ -1,5 +1,6 @@
-﻿// Copyright (c) Chris Pulman. All rights reserved.
-// Licensed under the MIT license. See LICENSE file in the project root for full license information.
+// Copyright (c) 2022-2026 Chris Pulman. All rights reserved.
+// Chris Pulman licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for full license information.
 
 using System;
 using System.Collections.Generic;
@@ -8,17 +9,27 @@ using OmronPlcRx.Core.Enums;
 
 namespace OmronPlcRx.Core.Requests;
 
+/// <summary>Represents the w ri te cl oc kr eq ue st type.</summary>
 internal sealed class WriteClockRequest : FINSRequest
 {
+    /// <summary>Initializes a new instance of the <see cref="WriteClockRequest"/> class.</summary>
+    /// <param name="plc">The p lc value.</param>
     private WriteClockRequest(OmronPLCConnection plc)
         : base(plc)
     {
     }
 
+    /// <summary>Gets or sets the date time value.</summary>
     internal DateTime DateTime { get; set; }
 
+    /// <summary>Gets or sets the day of week value.</summary>
     internal byte DayOfWeek { get; set; }
 
+    /// <summary>Initializes a new instance of the <see cref="CreateNew"/> class.</summary>
+    /// <param name="plc">The p lc value.</param>
+    /// <param name="dateTime">The d at et im e value.</param>
+    /// <param name="dayOfWeek">The d ay of we ek value.</param>
+    /// <returns>The result produced by the operation.</returns>
     internal static WriteClockRequest CreateNew(OmronPLCConnection plc, DateTime dateTime, byte dayOfWeek) => new(plc)
     {
         FunctionCode = (byte)Enums.FunctionCode.TimeData,
@@ -27,27 +38,28 @@ internal sealed class WriteClockRequest : FINSRequest
         DayOfWeek = dayOfWeek,
     };
 
-    protected override List<byte> BuildRequestData() => new List<byte>
-        {
-            // Year (Last 2 Digits)
-            BCDConverter.GetBCDByte((byte)(DateTime.Year % 100)),
+    protected override List<byte> BuildRequestData() =>
+    [
 
-            // Month
-            BCDConverter.GetBCDByte((byte)DateTime.Month),
+        // Year (Last 2 Digits)
+        BCDConverter.GetBCDByte((byte)(DateTime.Year % 100)),
 
-            // Day
-            BCDConverter.GetBCDByte((byte)DateTime.Day),
+        // Month
+        BCDConverter.GetBCDByte((byte)DateTime.Month),
 
-            // Hour
-            BCDConverter.GetBCDByte((byte)DateTime.Hour),
+        // Day
+        BCDConverter.GetBCDByte((byte)DateTime.Day),
 
-            // Minute
-            BCDConverter.GetBCDByte((byte)DateTime.Minute),
+        // Hour
+        BCDConverter.GetBCDByte((byte)DateTime.Hour),
 
-            // Second
-            BCDConverter.GetBCDByte((byte)DateTime.Second),
+        // Minute
+        BCDConverter.GetBCDByte((byte)DateTime.Minute),
 
-            // Day of Week
-            BCDConverter.GetBCDByte(DayOfWeek)
-        };
+        // Second
+        BCDConverter.GetBCDByte((byte)DateTime.Second),
+
+        // Day of Week
+        BCDConverter.GetBCDByte(DayOfWeek),
+    ];
 }

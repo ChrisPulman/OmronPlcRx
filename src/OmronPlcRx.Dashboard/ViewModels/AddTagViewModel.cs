@@ -1,77 +1,80 @@
-// Copyright (c) Chris Pulman. All rights reserved.
-// Licensed under the MIT license.
+// Copyright (c) 2022-2026 Chris Pulman. All rights reserved.
+// Chris Pulman licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for full license information.
 
-using System.Reactive;
-using System.Reactive.Linq;
 using System.Text.RegularExpressions;
 using ReactiveUI;
+using ReactiveUI.Primitives;
 
 namespace OmronPlcRxDashboard.ViewModels;
 
-/// <summary>
-/// View model for Add Tag wizard/dialog.
-/// </summary>
-public sealed class AddTagViewModel : ReactiveObject
+/// <summary>View model for Add Tag wizard/dialog.</summary>
+public sealed partial class AddTagViewModel : ReactiveObject
 {
-    private static readonly Regex AddressRegex = new(@"^(?<area>[A-Za-z]{1,3})(?<word>\d+)(?:\.(?<bit>\d{1,2}))?(?:\[(?<len>\d{1,3})\])?$");
-
-    private string _name = string.Empty;
-    private string _address = string.Empty;
-    private Type _selectedType = typeof(short);
-    private string _validationMessage = string.Empty;
-    private bool _canAccept;
+    /// <summary>Matches supported PLC tag address syntax.</summary>
+    private static readonly Regex AddressRegex = CreateAddressRegex();
 
     /// <summary>Initializes a new instance of the <see cref="AddTagViewModel"/> class.</summary>
+    /// <param name="allowedTypes">The allowed types value.</param>
     public AddTagViewModel(IEnumerable<Type> allowedTypes)
     {
         AllowedTypes = new List<Type>(allowedTypes);
-        this.WhenAnyValue(x => x.Name, x => x.Address, x => x.SelectedType)
+        _ = this.WhenAnyValue(x => x.Name, x => x.Address, x => x.SelectedType)
             .Select(_ => Validate(Name, Address))
-            .Subscribe(valid => CanAccept = valid);
-        OkCommand = ReactiveCommand.Create(() => { }, this.WhenAnyValue(v => v.CanAccept));
+            .SubscribeSafe(valid => CanAccept = valid, exception => ValidationMessage = exception.Message);
+        OkCommand = ReactiveCommand.Create(static () => { }, this.WhenAnyValue(v => v.CanAccept));
     }
 
-    /// <summary>Gets allowed types.</summary>
+    /// <summary>Gets the allowed types value.</summary>
     public IReadOnlyList<Type> AllowedTypes { get; }
 
-    /// <summary>Gets or sets tag name.</summary>
+    /// <summary>Gets or sets the name value.</summary>
     public string Name
     {
-        get => _name;
-        set => this.RaiseAndSetIfChanged(ref _name, value);
-    }
+        get => field;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    } = string.Empty;
 
-    /// <summary>Gets or sets PLC address.</summary>
+    /// <summary>Gets or sets the address value.</summary>
     public string Address
     {
-        get => _address;
-        set => this.RaiseAndSetIfChanged(ref _address, value);
-    }
+        get => field;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    } = string.Empty;
 
-    /// <summary>Gets or sets selected value type.</summary>
+    /// <summary>Gets or sets the selected type value.</summary>
     public Type SelectedType
     {
-        get => _selectedType;
-        set => this.RaiseAndSetIfChanged(ref _selectedType, value);
-    }
+        get => field;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    } = typeof(short);
 
-    /// <summary>Gets validation message.</summary>
+    /// <summary>Gets the validation message value.</summary>
     public string ValidationMessage
     {
-        get => _validationMessage;
-        private set => this.RaiseAndSetIfChanged(ref _validationMessage, value);
-    }
+        get => field;
+        private set => this.RaiseAndSetIfChanged(ref field, value);
+    } = string.Empty;
 
-    /// <summary>Gets a value indicating whether OK can be accepted.</summary>
+    /// <summary>Gets the can accept value.</summary>
     public bool CanAccept
     {
-        get => _canAccept;
-        private set => this.RaiseAndSetIfChanged(ref _canAccept, value);
+        get => field;
+        private set => this.RaiseAndSetIfChanged(ref field, value);
     }
 
-    /// <summary>Gets OK command (no-op, for binding state).</summary>
-    public ReactiveCommand<Unit, Unit> OkCommand { get; }
+    /// <summary>Gets the ok command value.</summary>
+    public ReactiveCommand<RxVoid, RxVoid> OkCommand { get; }
 
+    /// <summary>Creates the PLC address validation regex.</summary>
+    /// <returns>The generated PLC address regex.</returns>
+    [GeneratedRegex(@"^(?<area>[A-Za-z]{1,3})(?<word>\d+)(?:\.(?<bit>\d{1,2}))?(?:\[(?<len>\d{1,3})\])?$")]
+    private static partial Regex CreateAddressRegex();
+
+    /// <summary>Validates the requested tag name and PLC address.</summary>
+    /// <param name="name">The tag name.</param>
+    /// <param name="address">The PLC address.</param>
+    /// <returns><see langword="true"/> when the tag can be accepted.</returns>
     private bool Validate(string? name, string? address)
     {
         if (string.IsNullOrWhiteSpace(name))
@@ -79,27 +82,32 @@ public sealed class AddTagViewModel : ReactiveObject
             ValidationMessage = "Name required";
             return false;
         }
+
         if (string.IsNullOrWhiteSpace(address))
         {
             ValidationMessage = "Address required";
             return false;
         }
-        var m = AddressRegex.Match(address.Trim());
-        if (!m.Success)
+
+        var match = AddressRegex.Match(address.Trim());
+        if (!match.Success)
         {
             ValidationMessage = "Invalid address format";
             return false;
         }
-        if (m.Groups["bit"].Success && m.Groups["len"].Success)
+
+        if (match.Groups["bit"].Success && match.Groups["len"].Success)
         {
             ValidationMessage = "Cannot specify bit and length";
             return false;
         }
-        if (m.Groups["bit"].Success && int.Parse(m.Groups["bit"].Value) > 15)
+
+        if (match.Groups["bit"].Success && int.Parse(match.Groups["bit"].Value) > 15)
         {
             ValidationMessage = "Bit index 0-15";
             return false;
         }
+
         ValidationMessage = string.Empty;
         return true;
     }

@@ -1,11 +1,16 @@
-// Copyright (c) Chris Pulman. All rights reserved.
-// Licensed under the MIT license. See LICENSE file in the project root for full license information.
+// Copyright (c) 2022-2026 Chris Pulman. All rights reserved.
+// Chris Pulman licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for full license information.
 
 namespace OmronPlcRx.Core.Enums;
 
+/// <summary>Represents the e rr or lo gf un ct io nc od e enumeration.</summary>
 internal enum ErrorLogFunctionCode : byte
 {
+    /// <summary>Represents the c le ar me ss ag es enum value.</summary>
     ClearMessages = 0x01,
+    /// <summary>Represents the r ea d enum value.</summary>
     Read = 0x02,
+    /// <summary>Represents the c le ar lo g enum value.</summary>
     ClearLog = 0x03,
 }

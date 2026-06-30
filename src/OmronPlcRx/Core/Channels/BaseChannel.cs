@@ -1,5 +1,6 @@
-﻿// Copyright (c) Chris Pulman. All rights reserved.
-// Licensed under the MIT license. See LICENSE file in the project root for full license information.
+// Copyright (c) 2022-2026 Chris Pulman. All rights reserved.
+// Chris Pulman licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for full license information.
 
 using System;
 using System.Threading;
@@ -10,131 +11,205 @@ using OmronPlcRx.Core.Results;
 
 namespace OmronPlcRx.Core.Channels;
 
+/// <summary>Represents the b as ec ha nn el type.</summary>
 internal abstract class BaseChannel : IDisposable
 {
+    /// <summary>Stores the r eq ue st id value.</summary>
     private byte _requestId;
 
+    /// <summary>Initializes a new instance of the <see cref="BaseChannel"/> class.</summary>
+    /// <param name="remoteHost">The r em ot eh os t value.</param>
+    /// <param name="port">The p or t value.</param>
     internal BaseChannel(string remoteHost, int port)
     {
         RemoteHost = remoteHost;
         Port = port;
-        Semaphore = new SemaphoreSlim(1, 1);
+        Semaphore = new(1, 1);
     }
 
+    /// <summary>Gets the remote host value.</summary>
     internal string RemoteHost { get; }
 
+    /// <summary>Gets the port value.</summary>
     internal int Port { get; }
 
+    /// <summary>Gets the semaphore value.</summary>
     protected SemaphoreSlim Semaphore { get; }
 
+    /// <summary>Initializes a new instance of the <see cref="Dispose"/> class.</summary>
     public virtual void Dispose() => Semaphore?.Dispose();
 
+    /// <summary>Initializes a new instance of the <see cref="InitializeAsync"/> class.</summary>
+    /// <param name="timeout">The t im eo ut value.</param>
+    /// <param name="cancellationToken">The c an ce ll at io nt ok en value.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
     internal abstract Task InitializeAsync(int timeout, CancellationToken cancellationToken);
 
+    /// <summary>Initializes a new instance of the <see cref="ProcessRequestAsync"/> class.</summary>
+    /// <param name="request">The r eq ue st value.</param>
+    /// <param name="timeout">The t im eo ut value.</param>
+    /// <param name="retries">The r et ri es value.</param>
+    /// <param name="cancellationToken">The c an ce ll at io nt ok en value.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
     internal async Task<ProcessRequestResult> ProcessRequestAsync(FINSRequest request, int timeout, int retries, CancellationToken cancellationToken)
     {
-        var attempts = 0;
-        var responseMessage = default(Memory<byte>);
-        var bytesSent = 0;
-        var packetsSent = 0;
-        var bytesReceived = 0;
-        var packetsReceived = 0;
         var startTimestamp = DateTime.UtcNow;
-
-        while (attempts <= retries)
-        {
-            if (!Semaphore.Wait(0, cancellationToken))
-            {
-                await Semaphore.WaitAsync(cancellationToken);
-            }
-
-            try
-            {
-                if (attempts > 0)
-                {
-                    await DestroyAndInitializeClient(timeout, cancellationToken);
-                }
-
-                // Build the Request into a Message we can Send
-                var requestMessage = request.BuildMessage(GetNextRequestId());
-
-                // Send the Message
-                var sendResult = await SendMessageAsync(requestMessage, timeout, cancellationToken);
-
-                bytesSent += sendResult.Bytes;
-                packetsSent += sendResult.Packets;
-
-                // Receive a Response
-                var receiveResult = await ReceiveMessageAsync(timeout, cancellationToken);
-
-                bytesReceived += receiveResult.Bytes;
-                packetsReceived += receiveResult.Packets;
-                responseMessage = receiveResult.Message;
-
-                break;
-            }
-            catch (Exception)
-            {
-                if (attempts >= retries)
-                {
-                    throw;
-                }
-            }
-            finally
-            {
-                Semaphore.Release();
-            }
-
-            // Increment the Attempts
-            attempts++;
-        }
+        var attemptResult = await SendAndReceiveWithRetriesAsync(request, timeout, retries, cancellationToken);
 
         try
         {
             return new ProcessRequestResult
             {
-                BytesSent = bytesSent,
-                PacketsSent = packetsSent,
-                BytesReceived = bytesReceived,
-                PacketsReceived = packetsReceived,
+                BytesSent = attemptResult.BytesSent,
+                PacketsSent = attemptResult.PacketsSent,
+                BytesReceived = attemptResult.BytesReceived,
+                PacketsReceived = attemptResult.PacketsReceived,
                 Duration = DateTime.UtcNow.Subtract(startTimestamp).TotalMilliseconds,
-                Response = FINSResponse.CreateNew(responseMessage, request),
+                Response = FINSResponse.CreateNew(attemptResult.ResponseMessage, request),
             };
         }
         catch (FINSException e)
         {
-            if (e.Message.Contains("Service ID") && responseMessage.Length >= 9 && responseMessage.Span[9] != request.ServiceID)
-            {
-                if (!Semaphore.Wait(0, cancellationToken))
-                {
-                    await Semaphore.WaitAsync(cancellationToken);
-                }
-
-                try
-                {
-                    await PurgeReceiveBuffer(timeout, cancellationToken);
-                }
-                catch
-                {
-                }
-                finally
-                {
-                    Semaphore.Release();
-                }
-            }
+            await PurgeReceiveBufferWhenServiceIdMismatchAsync(e, attemptResult.ResponseMessage, request, timeout, cancellationToken);
 
             throw new OmronPLCException("Received a FINS Error Response from Omron PLC '" + RemoteHost + ":" + Port + "'", e);
         }
     }
 
+    /// <summary>Initializes a new instance of the <see cref="DestroyAndInitializeClient"/> class.</summary>
+    /// <param name="timeout">The t im eo ut value.</param>
+    /// <param name="cancellationToken">The c an ce ll at io nt ok en value.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
     protected abstract Task DestroyAndInitializeClient(int timeout, CancellationToken cancellationToken);
 
+    /// <summary>Initializes a new instance of the <see cref="SendMessageAsync"/> class.</summary>
+    /// <param name="message">The m es sa ge value.</param>
+    /// <param name="timeout">The t im eo ut value.</param>
+    /// <param name="cancellationToken">The c an ce ll at io nt ok en value.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
     protected abstract Task<SendMessageResult> SendMessageAsync(ReadOnlyMemory<byte> message, int timeout, CancellationToken cancellationToken);
 
+    /// <summary>Initializes a new instance of the <see cref="ReceiveMessageAsync"/> class.</summary>
+    /// <param name="timeout">The t im eo ut value.</param>
+    /// <param name="cancellationToken">The c an ce ll at io nt ok en value.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
     protected abstract Task<ReceiveMessageResult> ReceiveMessageAsync(int timeout, CancellationToken cancellationToken);
 
+    /// <summary>Initializes a new instance of the <see cref="PurgeReceiveBuffer"/> class.</summary>
+    /// <param name="timeout">The t im eo ut value.</param>
+    /// <param name="cancellationToken">The c an ce ll at io nt ok en value.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
     protected abstract Task PurgeReceiveBuffer(int timeout, CancellationToken cancellationToken);
 
+    /// <summary>Attempts to send a request and receive its response.</summary>
+    /// <param name="request">The request to send.</param>
+    /// <param name="timeout">The timeout in milliseconds.</param>
+    /// <param name="retries">The number of retry attempts.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>The accumulated send and receive result.</returns>
+    private async Task<RequestAttemptResult> SendAndReceiveWithRetriesAsync(FINSRequest request, int timeout, int retries, CancellationToken cancellationToken)
+    {
+        var result = new RequestAttemptResult();
+        for (var attempts = 0; attempts <= retries; attempts++)
+        {
+            await WaitForChannelAsync(cancellationToken);
+
+            try
+            {
+                await SendAndReceiveAttemptAsync(request, timeout, attempts, result, cancellationToken);
+                return result;
+            }
+            catch (Exception) when (attempts < retries)
+            {
+                result.LastRetryFailed = true;
+            }
+            finally
+            {
+                _ = Semaphore.Release();
+            }
+        }
+
+        return result;
+    }
+
+    /// <summary>Sends and receives one request attempt.</summary>
+    /// <param name="request">The request to send.</param>
+    /// <param name="timeout">The timeout in milliseconds.</param>
+    /// <param name="attempt">The zero-based attempt number.</param>
+    /// <param name="result">The accumulated result.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
+    private async Task SendAndReceiveAttemptAsync(FINSRequest request, int timeout, int attempt, RequestAttemptResult result, CancellationToken cancellationToken)
+    {
+        if (attempt > 0)
+        {
+            await DestroyAndInitializeClient(timeout, cancellationToken);
+        }
+
+        var requestMessage = request.BuildMessage(GetNextRequestId());
+        var sendResult = await SendMessageAsync(requestMessage, timeout, cancellationToken);
+        result.BytesSent += sendResult.Bytes;
+        result.PacketsSent += sendResult.Packets;
+
+        var receiveResult = await ReceiveMessageAsync(timeout, cancellationToken);
+        result.BytesReceived += receiveResult.Bytes;
+        result.PacketsReceived += receiveResult.Packets;
+        result.ResponseMessage = receiveResult.Message;
+    }
+
+    /// <summary>Purges stale data after a response service identifier mismatch.</summary>
+    /// <param name="exception">The FINS exception.</param>
+    /// <param name="responseMessage">The received response message.</param>
+    /// <param name="request">The original request.</param>
+    /// <param name="timeout">The timeout in milliseconds.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
+    private async Task PurgeReceiveBufferWhenServiceIdMismatchAsync(FINSException exception, Memory<byte> responseMessage, FINSRequest request, int timeout, CancellationToken cancellationToken)
+    {
+        if (!IsMismatch(exception, responseMessage, request))
+        {
+            return;
+        }
+
+        await WaitForChannelAsync(cancellationToken);
+
+        try
+        {
+            await PurgeReceiveBuffer(timeout, cancellationToken);
+        }
+        catch (TimeoutException)
+        {
+        }
+        catch (ObjectDisposedException)
+        {
+        }
+        catch (OmronPLCException)
+        {
+        }
+        finally
+        {
+            _ = Semaphore.Release();
+        }
+
+        static bool IsMismatch(FINSException exception, Memory<byte> responseMessage, FINSRequest request) =>
+            exception.Message.Contains("Service ID") && responseMessage.Length >= 9 && responseMessage.Span[9] != request.ServiceID;
+    }
+
+    /// <summary>Waits for exclusive access to the channel.</summary>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
+    private async Task WaitForChannelAsync(CancellationToken cancellationToken)
+    {
+        if (Semaphore.Wait(0, cancellationToken))
+        {
+            return;
+        }
+
+        await Semaphore.WaitAsync(cancellationToken);
+    }
+
+    /// <summary>Initializes a new instance of the <see cref="GetNextRequestId"/> class.</summary>
+    /// <returns>The result produced by the operation.</returns>
     private byte GetNextRequestId()
     {
         if (_requestId == byte.MaxValue)
@@ -147,5 +222,27 @@ internal abstract class BaseChannel : IDisposable
         }
 
         return _requestId;
+    }
+
+    /// <summary>Contains accumulated request attempt data.</summary>
+    private sealed class RequestAttemptResult
+    {
+        /// <summary>Gets or sets the sent byte count.</summary>
+        public int BytesSent { get; set; }
+
+        /// <summary>Gets or sets the sent packet count.</summary>
+        public int PacketsSent { get; set; }
+
+        /// <summary>Gets or sets the received byte count.</summary>
+        public int BytesReceived { get; set; }
+
+        /// <summary>Gets or sets the received packet count.</summary>
+        public int PacketsReceived { get; set; }
+
+        /// <summary>Gets or sets the response message.</summary>
+        public Memory<byte> ResponseMessage { get; set; }
+
+        /// <summary>Gets or sets a value indicating whether the last retry failed.</summary>
+        public bool LastRetryFailed { get; set; }
     }
 }

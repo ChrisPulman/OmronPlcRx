@@ -1,10 +1,15 @@
-﻿// Copyright (c) Chris Pulman. All rights reserved.
-// Licensed under the MIT license. See LICENSE file in the project root for full license information.
+// Copyright (c) 2022-2026 Chris Pulman. All rights reserved.
+// Chris Pulman licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for full license information.
 
 namespace OmronPlcRx.Core.Results;
 
-internal record struct SendMessageResult
+/// <summary>Represents the s en dm es sa ge re su lt type.</summary>
+internal readonly record struct SendMessageResult
 {
-    internal int Bytes;
-    internal int Packets;
+    /// <summary>Gets or sets the bytes value.</summary>
+    internal int Bytes { get; init; }
+
+    /// <summary>Gets or sets the packets value.</summary>
+    internal int Packets { get; init; }
 }

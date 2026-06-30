@@ -1,5 +1,6 @@
-// Copyright (c) Chris Pulman. All rights reserved.
-// Licensed under the MIT license. See LICENSE file in the project root for full license information.
+// Copyright (c) 2022-2026 Chris Pulman. All rights reserved.
+// Chris Pulman licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for full license information.
 
 using System;
 using System.Net;
@@ -12,13 +13,23 @@ namespace OmronPlcRx.Core;
 /// <summary>
 /// UDP socket client wrapper providing send and receive operations with timeout and cancellation support across multiple target frameworks.
 /// </summary>
-internal class UdpClient : IDisposable
+internal sealed class UdpClient : IDisposable
 {
+    /// <summary>Stores the s oc ke t value.</summary>
     private readonly Socket _socket;
+
+    /// <summary>Stores the r em ot eh os t value.</summary>
     private readonly string _remoteHost;
+
+    /// <summary>Stores the r em ot ep or t value.</summary>
     private readonly int _remotePort;
+
+    /// <summary>Stores the d is po se d value.</summary>
     private bool _disposed;
 
+    /// <summary>Initializes a new instance of the <see cref="UdpClient"/> class.</summary>
+    /// <param name="host">The h os t value.</param>
+    /// <param name="port">The p or t value.</param>
     public UdpClient(string host, int port)
     {
         _remoteHost = host ?? throw new ArgumentNullException(nameof(host));
@@ -30,13 +41,16 @@ internal class UdpClient : IDisposable
 
         _remotePort = port;
 
-        _socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+        _socket = new(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
         _socket.Connect(_remoteHost, _remotePort);
     }
 
+    /// <summary>Initializes a new instance of the <see cref="UdpClient"/> class.</summary>
+    /// <param name="address">The a dd re ss value.</param>
+    /// <param name="port">The p or t value.</param>
     public UdpClient(IPAddress address, int port)
     {
-        if (address == null)
+        if (address is null)
         {
             throw new ArgumentNullException(nameof(address));
         }
@@ -50,29 +64,55 @@ internal class UdpClient : IDisposable
 
         _remotePort = port;
 
-        _socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+        _socket = new(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
         _socket.Connect(_remoteHost, _remotePort);
     }
 
+    /// <summary>Gets the available value.</summary>
     public int Available => _disposed ? 0 : _socket.Available;
 
+    /// <summary>Gets the socket value.</summary>
     public Socket? Socket => _disposed ? null : _socket;
 
+    /// <summary>Disposes the UDP client and underlying socket.</summary>
     public void Dispose()
     {
         Dispose(true);
         GC.SuppressFinalize(this);
     }
 
+    /// <summary>Sends bytes with no finite timeout.</summary>
+    /// <param name="buffer">The b uf fe r value.</param>
+    /// <param name="cancellationToken">The c an ce ll at io nt ok en value.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
     public Task<int> SendAsync(byte[] buffer, CancellationToken cancellationToken) => SendAsync(buffer, Timeout.InfiniteTimeSpan, cancellationToken);
 
+    /// <summary>Sends bytes with a timeout in milliseconds.</summary>
+    /// <param name="buffer">The b uf fe r value.</param>
+    /// <param name="timeout">The t im eo ut value.</param>
+    /// <param name="cancellationToken">The c an ce ll at io nt ok en value.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
     public Task<int> SendAsync(byte[] buffer, int timeout, CancellationToken cancellationToken) => SendAsync(buffer, TimeSpan.FromMilliseconds(timeout), cancellationToken);
 
 #if NET6_0_OR_GREATER
+    /// <summary>Sends bytes from read-only memory with no finite timeout.</summary>
+    /// <param name="buffer">The b uf fe r value.</param>
+    /// <param name="cancellationToken">The c an ce ll at io nt ok en value.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
     public Task<int> SendAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken) => SendAsync(buffer, Timeout.InfiniteTimeSpan, cancellationToken);
 
+    /// <summary>Sends bytes from read-only memory with a timeout in milliseconds.</summary>
+    /// <param name="buffer">The b uf fe r value.</param>
+    /// <param name="timeout">The t im eo ut value.</param>
+    /// <param name="cancellationToken">The c an ce ll at io nt ok en value.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
     public Task<int> SendAsync(ReadOnlyMemory<byte> buffer, int timeout, CancellationToken cancellationToken) => SendAsync(buffer, TimeSpan.FromMilliseconds(timeout), cancellationToken);
 
+    /// <summary>Sends bytes from read-only memory with a timeout.</summary>
+    /// <param name="buffer">The b uf fe r value.</param>
+    /// <param name="timeout">The t im eo ut value.</param>
+    /// <param name="cancellationToken">The c an ce ll at io nt ok en value.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
     public async Task<int> SendAsync(ReadOnlyMemory<byte> buffer, TimeSpan timeout, CancellationToken cancellationToken)
     {
         ThrowIfDisposed();
@@ -96,28 +136,12 @@ internal class UdpClient : IDisposable
 
         if (sendTask == await Task.WhenAny(sendTask, delayTask).ConfigureAwait(false))
         {
-            delayCts.Cancel();
-
-            try
-            {
-                await delayTask.ConfigureAwait(false);
-            }
-            catch
-            {
-            }
+            await SocketOperationCleanup.CancelDelayAsync(delayCts, delayTask).ConfigureAwait(false);
 
             return await sendTask.ConfigureAwait(false);
         }
 
-        sendCts.Cancel();
-
-        try
-        {
-            await sendTask.ConfigureAwait(false);
-        }
-        catch
-        {
-        }
+        await SocketOperationCleanup.CancelSocketOperationAsync(sendCts, sendTask).ConfigureAwait(false);
 
         await delayTask.ConfigureAwait(false);
 
@@ -125,13 +149,28 @@ internal class UdpClient : IDisposable
     }
 #endif
 
+#if NET6_0_OR_GREATER
+    /// <summary>Sends bytes with a timeout.</summary>
+    /// <param name="buffer">The b uf fe r value.</param>
+    /// <param name="timeout">The t im eo ut value.</param>
+    /// <param name="cancellationToken">The c an ce ll at io nt ok en value.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
+    public Task<int> SendAsync(byte[] buffer, TimeSpan timeout, CancellationToken cancellationToken)
+    {
+        ThrowIfDisposed();
+
+        return SendAsync(buffer.AsMemory(), timeout, cancellationToken);
+    }
+#else
+    /// <summary>Sends bytes with a timeout.</summary>
+    /// <param name="buffer">The b uf fe r value.</param>
+    /// <param name="timeout">The t im eo ut value.</param>
+    /// <param name="cancellationToken">The c an ce ll at io nt ok en value.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
     public async Task<int> SendAsync(byte[] buffer, TimeSpan timeout, CancellationToken cancellationToken)
     {
         ThrowIfDisposed();
 
-#if NET6_0_OR_GREATER
-        return await SendAsync(buffer.AsMemory(), timeout, cancellationToken).ConfigureAwait(false);
-#else
         Func<AsyncCallback, object, IAsyncResult> beginSend = (callback, state) => _socket.BeginSend(buffer, 0, buffer.Length, SocketFlags.None, callback, state);
 
         if (timeout == Timeout.InfiniteTimeSpan || cancellationToken.IsCancellationRequested)
@@ -154,46 +193,53 @@ internal class UdpClient : IDisposable
 
                 if (sendTask == await Task.WhenAny(sendTask, delayTask).ConfigureAwait(false))
                 {
-                    delayCts.Cancel();
-
-                    try
-                    {
-                        await delayTask.ConfigureAwait(false);
-                    }
-                    catch
-                    {
-                    }
+                    await SocketOperationCleanup.CancelDelayAsync(delayCts, delayTask).ConfigureAwait(false);
 
                     return await sendTask.ConfigureAwait(false);
                 }
 
-                sendCts.Cancel();
-
-                try
-                {
-                    await sendTask.ConfigureAwait(false);
-                }
-                catch
-                {
-                }
+                await SocketOperationCleanup.CancelSocketOperationAsync(sendCts, sendTask).ConfigureAwait(false);
 
                 await delayTask.ConfigureAwait(false);
 
                 throw new TimeoutException("Failed to Send to the Remote Host '" + _remoteHost + ":" + _remotePort.ToString() + "' within the Timeout Period");
             }
         }
-#endif
     }
+#endif
 
+    /// <summary>Receives bytes with no finite timeout.</summary>
+    /// <param name="buffer">The b uf fe r value.</param>
+    /// <param name="cancellationToken">The c an ce ll at io nt ok en value.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
     public Task<int> ReceiveAsync(byte[] buffer, CancellationToken cancellationToken) => ReceiveAsync(buffer, Timeout.InfiniteTimeSpan, cancellationToken);
 
+    /// <summary>Receives bytes with a timeout in milliseconds.</summary>
+    /// <param name="buffer">The b uf fe r value.</param>
+    /// <param name="timeout">The t im eo ut value.</param>
+    /// <param name="cancellationToken">The c an ce ll at io nt ok en value.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
     public Task<int> ReceiveAsync(byte[] buffer, int timeout, CancellationToken cancellationToken) => ReceiveAsync(buffer, TimeSpan.FromMilliseconds(timeout), cancellationToken);
 
 #if NET6_0_OR_GREATER
+    /// <summary>Receives bytes into memory with no finite timeout.</summary>
+    /// <param name="buffer">The b uf fe r value.</param>
+    /// <param name="cancellationToken">The c an ce ll at io nt ok en value.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
     public Task<int> ReceiveAsync(Memory<byte> buffer, CancellationToken cancellationToken) => ReceiveAsync(buffer, Timeout.InfiniteTimeSpan, cancellationToken);
 
+    /// <summary>Receives bytes into memory with a timeout in milliseconds.</summary>
+    /// <param name="buffer">The b uf fe r value.</param>
+    /// <param name="timeout">The t im eo ut value.</param>
+    /// <param name="cancellationToken">The c an ce ll at io nt ok en value.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
     public Task<int> ReceiveAsync(Memory<byte> buffer, int timeout, CancellationToken cancellationToken) => ReceiveAsync(buffer, TimeSpan.FromMilliseconds(timeout), cancellationToken);
 
+    /// <summary>Receives bytes into memory with a timeout.</summary>
+    /// <param name="buffer">The b uf fe r value.</param>
+    /// <param name="timeout">The t im eo ut value.</param>
+    /// <param name="cancellationToken">The c an ce ll at io nt ok en value.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
     public async Task<int> ReceiveAsync(Memory<byte> buffer, TimeSpan timeout, CancellationToken cancellationToken)
     {
         ThrowIfDisposed();
@@ -217,28 +263,12 @@ internal class UdpClient : IDisposable
 
         if (receiveTask == await Task.WhenAny(receiveTask, delayTask).ConfigureAwait(false))
         {
-            delayCts.Cancel();
-
-            try
-            {
-                await delayTask.ConfigureAwait(false);
-            }
-            catch
-            {
-            }
+            await SocketOperationCleanup.CancelDelayAsync(delayCts, delayTask).ConfigureAwait(false);
 
             return await receiveTask.ConfigureAwait(false);
         }
 
-        receiveCts.Cancel();
-
-        try
-        {
-            await receiveTask.ConfigureAwait(false);
-        }
-        catch
-        {
-        }
+        await SocketOperationCleanup.CancelSocketOperationAsync(receiveCts, receiveTask).ConfigureAwait(false);
 
         await delayTask.ConfigureAwait(false);
 
@@ -246,13 +276,28 @@ internal class UdpClient : IDisposable
     }
 #endif
 
+#if NET6_0_OR_GREATER
+    /// <summary>Receives bytes into an array with a timeout.</summary>
+    /// <param name="buffer">The b uf fe r value.</param>
+    /// <param name="timeout">The t im eo ut value.</param>
+    /// <param name="cancellationToken">The c an ce ll at io nt ok en value.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
+    public Task<int> ReceiveAsync(byte[] buffer, TimeSpan timeout, CancellationToken cancellationToken)
+    {
+        ThrowIfDisposed();
+
+        return ReceiveAsync(buffer.AsMemory(), timeout, cancellationToken);
+    }
+#else
+    /// <summary>Receives bytes into an array with a timeout.</summary>
+    /// <param name="buffer">The b uf fe r value.</param>
+    /// <param name="timeout">The t im eo ut value.</param>
+    /// <param name="cancellationToken">The c an ce ll at io nt ok en value.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
     public async Task<int> ReceiveAsync(byte[] buffer, TimeSpan timeout, CancellationToken cancellationToken)
     {
         ThrowIfDisposed();
 
-#if NET6_0_OR_GREATER
-        return await ReceiveAsync(buffer.AsMemory(), timeout, cancellationToken).ConfigureAwait(false);
-#else
         Func<AsyncCallback, object, IAsyncResult> beginReceive = (callback, state) => _socket.BeginReceive(buffer, 0, buffer.Length, SocketFlags.None, callback, state);
 
         if (timeout == Timeout.InfiniteTimeSpan || cancellationToken.IsCancellationRequested)
@@ -275,70 +320,59 @@ internal class UdpClient : IDisposable
 
                 if (receiveTask == await Task.WhenAny(receiveTask, delayTask).ConfigureAwait(false))
                 {
-                    delayCts.Cancel();
-
-                    try
-                    {
-                        await delayTask.ConfigureAwait(false);
-                    }
-                    catch
-                    {
-                    }
+                    await SocketOperationCleanup.CancelDelayAsync(delayCts, delayTask).ConfigureAwait(false);
 
                     return await receiveTask.ConfigureAwait(false);
                 }
 
-                receiveCts.Cancel();
-
-                try
-                {
-                    await receiveTask.ConfigureAwait(false);
-                }
-                catch
-                {
-                }
+                await SocketOperationCleanup.CancelSocketOperationAsync(receiveCts, receiveTask).ConfigureAwait(false);
 
                 await delayTask.ConfigureAwait(false);
 
                 throw new TimeoutException("Failed to Receive from the Remote Host '" + _remoteHost + ":" + _remotePort.ToString() + "' within the Timeout Period");
             }
         }
-#endif
     }
+#endif
 
-    protected virtual void Dispose(bool disposing)
+    /// <summary>Releases managed resources used by the UDP client.</summary>
+    /// <param name="disposing">The d is po si ng value.</param>
+    private void Dispose(bool disposing)
     {
         if (_disposed)
         {
             return;
         }
 
-        if (disposing)
+        if (disposing && _socket is not null)
         {
-            if (_socket != null)
+            try
             {
-                try
-                {
-                    _socket.Shutdown(SocketShutdown.Both);
-                }
-                catch
-                {
-                }
-                finally
-                {
-                    _socket.Dispose();
-                }
+                _socket.Shutdown(SocketShutdown.Both);
+            }
+            catch (SocketException)
+            {
+            }
+            catch (ObjectDisposedException)
+            {
+            }
+            finally
+            {
+                _socket.Dispose();
             }
         }
 
         _disposed = true;
     }
 
+    /// <summary>Throws if the UDP client has been disposed.</summary>
     private void ThrowIfDisposed()
     {
-        if (_disposed)
+        if (!_disposed)
         {
-            throw new ObjectDisposedException(GetType().FullName);
+            return;
         }
+
+        throw new ObjectDisposedException(GetType().FullName);
     }
 }

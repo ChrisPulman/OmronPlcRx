@@ -1,5 +1,6 @@
-// Copyright (c) Chris Pulman. All rights reserved.
-// Licensed under the MIT license. See LICENSE file in the project root for full license information.
+// Copyright (c) 2022-2026 Chris Pulman. All rights reserved.
+// Chris Pulman licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for full license information.
 
 using System;
 using System.Net;
@@ -12,13 +13,23 @@ namespace OmronPlcRx.Core;
 /// <summary>
 /// TCP socket client wrapper providing connect, send and receive operations with timeout and cancellation support across multiple target frameworks.
 /// </summary>
-internal class TcpClient : IDisposable
+internal sealed class TcpClient : IDisposable
 {
+    /// <summary>Stores the s oc ke t value.</summary>
     private readonly Socket _socket;
+
+    /// <summary>Stores the r em ot eh os t value.</summary>
     private readonly string _remoteHost;
+
+    /// <summary>Stores the r em ot ep or t value.</summary>
     private readonly int _remotePort;
+
+    /// <summary>Stores the d is po se d value.</summary>
     private bool _disposed;
 
+    /// <summary>Initializes a new instance of the <see cref="TcpClient"/> class.</summary>
+    /// <param name="host">The h os t value.</param>
+    /// <param name="port">The p or t value.</param>
     public TcpClient(string host, int port)
     {
         _remoteHost = host ?? throw new ArgumentNullException(nameof(host));
@@ -30,15 +41,18 @@ internal class TcpClient : IDisposable
 
         _remotePort = port;
 
-        _socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)
+        _socket = new(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)
         {
-            LingerState = new LingerOption(true, 0),
+            LingerState = new(true, 0),
         };
     }
 
+    /// <summary>Initializes a new instance of the <see cref="TcpClient"/> class.</summary>
+    /// <param name="address">The a dd re ss value.</param>
+    /// <param name="port">The p or t value.</param>
     public TcpClient(IPAddress address, int port)
     {
-        if (address == null)
+        if (address is null)
         {
             throw new ArgumentNullException(nameof(address));
         }
@@ -52,214 +66,145 @@ internal class TcpClient : IDisposable
 
         _remotePort = port;
 
-        _socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)
+        _socket = new(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)
         {
-            LingerState = new LingerOption(true, 0),
+            LingerState = new(true, 0),
         };
     }
 
+    /// <summary>Initializes a new instance of the <see cref="TcpClient"/> class.</summary>
+    /// <param name="acceptedSocket">The a cc ep te ds oc ke t value.</param>
     internal TcpClient(Socket acceptedSocket)
     {
-        if (acceptedSocket == null)
-        {
-            throw new ArgumentNullException(nameof(acceptedSocket));
-        }
-
-        if (acceptedSocket.LingerState == null)
-        {
-            acceptedSocket.LingerState = new LingerOption(true, 0);
-        }
-        else if (!acceptedSocket.LingerState.Enabled || acceptedSocket.LingerState.LingerTime != 0)
-        {
-            acceptedSocket.LingerState.Enabled = true;
-            acceptedSocket.LingerState.LingerTime = 0;
-        }
-
-        if (acceptedSocket.RemoteEndPoint is IPEndPoint)
-        {
-            var dnsEndPoint = acceptedSocket.RemoteEndPoint as IPEndPoint;
-
-            _remoteHost = dnsEndPoint?.Address.ToString() ?? string.Empty;
-            _remotePort = dnsEndPoint?.Port ?? IPEndPoint.MinPort;
-        }
-        else if (acceptedSocket.RemoteEndPoint is DnsEndPoint)
-        {
-            var dnsEndPoint = acceptedSocket.RemoteEndPoint as DnsEndPoint;
-
-            _remoteHost = dnsEndPoint?.Host ?? string.Empty;
-            _remotePort = dnsEndPoint?.Port ?? IPEndPoint.MinPort;
-        }
-        else
-        {
-            _remoteHost = string.Empty;
-            _remotePort = IPEndPoint.MinPort;
-        }
-
-        _socket = acceptedSocket;
+        _socket = acceptedSocket ?? throw new ArgumentNullException(nameof(acceptedSocket));
+        TcpSocketConfiguration.ConfigureZeroLinger(_socket);
+        (_remoteHost, _remotePort) = TcpSocketConfiguration.GetRemoteHostAndPort(_socket.RemoteEndPoint);
     }
 
+    /// <summary>Gets the available value.</summary>
     public int Available => _disposed ? 0 : _socket.Available;
 
+    /// <summary>Gets the connected value.</summary>
     public bool Connected => !_disposed && _socket.Connected;
 
+    /// <summary>Gets the socket value.</summary>
     public Socket? Socket => _disposed ? null : _socket;
 
+    /// <summary>Gets or sets the no delay value.</summary>
     public bool NoDelay
     {
-        get
-        {
-            if (!_disposed)
-            {
-                return _socket.NoDelay;
-            }
-
-            return false;
-        }
+        get => _disposed ? false : _socket.NoDelay;
 
         set
         {
-            if (!_disposed)
+            if (_disposed)
             {
-                _socket.NoDelay = value;
+                return;
             }
+
+            _socket.NoDelay = value;
         }
     }
 
+    /// <summary>Gets or sets the linger state value.</summary>
     public LingerOption? LingerState
     {
-        get
-        {
-            if (!_disposed)
-            {
-                return _socket.LingerState;
-            }
-
-            return null;
-        }
+        get => _disposed ? null : _socket.LingerState;
 
         set
         {
-            if (!_disposed && value != null)
+            if (_disposed || value is null)
             {
-                _socket.LingerState = value;
+                return;
             }
+
+            _socket.LingerState = value;
         }
     }
 
+    /// <summary>Gets or sets the keep alive enabled value.</summary>
     public bool KeepAliveEnabled
     {
-        get
-        {
-            if (!_disposed)
-            {
-                var value = _socket.GetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive);
-
-                if (value != null && value is bool)
-                {
-                    return Convert.ToBoolean(value);
-                }
-            }
-
-            return false;
-        }
+        get => GetBooleanSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive);
 
         set
         {
-            if (!_disposed)
+            if (_disposed)
             {
-                _socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, value);
+                return;
             }
+
+            _socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, value);
         }
     }
 
 #if NET6_0_OR_GREATER
+    /// <summary>Gets or sets the keep alive internal value.</summary>
     public int KeepAliveInternal
     {
-        get
-        {
-            if (!_disposed)
-            {
-                var value = _socket.GetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveInterval);
-
-                if (value != null && value is int)
-                {
-                    return Convert.ToInt32(value);
-                }
-            }
-
-            return 0;
-        }
+        get => GetIntegerSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveInterval);
 
         set
         {
-            if (!_disposed)
+            if (_disposed)
             {
-                _socket.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveInterval, value);
+                return;
             }
+
+            _socket.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveInterval, value);
         }
     }
 
+    /// <summary>Gets or sets the keep alive delay value.</summary>
     public int KeepAliveDelay
     {
-        get
-        {
-            if (!_disposed)
-            {
-                var value = _socket.GetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveTime);
-
-                if (value != null && value is int)
-                {
-                    return Convert.ToInt32(value);
-                }
-            }
-
-            return 0;
-        }
+        get => GetIntegerSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveTime);
 
         set
         {
-            if (!_disposed)
+            if (_disposed)
             {
-                _socket.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveTime, value);
+                return;
             }
+
+            _socket.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveTime, value);
         }
     }
 
+    /// <summary>Gets or sets the keep alive retry count value.</summary>
     public int KeepAliveRetryCount
     {
-        get
-        {
-            if (!_disposed)
-            {
-                var value = _socket.GetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveRetryCount);
-
-                if (value != null && value is int)
-                {
-                    return Convert.ToInt32(value);
-                }
-            }
-
-            return 0;
-        }
+        get => GetIntegerSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveRetryCount);
 
         set
         {
-            if (!_disposed)
+            if (_disposed)
             {
-                _socket.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveRetryCount, value);
+                return;
             }
+
+            _socket.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveRetryCount, value);
         }
     }
 #endif
 
+    /// <summary>Disposes the TCP client and underlying socket.</summary>
     public void Dispose()
     {
         Dispose(true);
         GC.SuppressFinalize(this);
     }
 
+    /// <summary>Connects to the remote endpoint with a timeout in milliseconds.</summary>
+    /// <param name="timeout">The t im eo ut value.</param>
+    /// <param name="cancellationToken">The c an ce ll at io nt ok en value.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
     public Task ConnectAsync(int timeout, CancellationToken cancellationToken) => ConnectAsync(TimeSpan.FromMilliseconds(timeout), cancellationToken);
 
+    /// <summary>Connects to the remote endpoint with a timeout.</summary>
+    /// <param name="timeout">The t im eo ut value.</param>
+    /// <param name="cancellationToken">The c an ce ll at io nt ok en value.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
     public async Task ConnectAsync(TimeSpan timeout, CancellationToken cancellationToken)
     {
         ThrowIfDisposed();
@@ -286,29 +231,13 @@ internal class TcpClient : IDisposable
 
         if (connectTask == await Task.WhenAny(connectTask, delayTask).ConfigureAwait(false))
         {
-            delayCts.Cancel();
-
-            try
-            {
-                await delayTask.ConfigureAwait(false);
-            }
-            catch
-            {
-            }
+            await SocketOperationCleanup.CancelDelayAsync(delayCts, delayTask).ConfigureAwait(false);
 
             await connectTask.ConfigureAwait(false);
             return;
         }
 
-        connectCts.Cancel();
-
-        try
-        {
-            await connectTask.ConfigureAwait(false);
-        }
-        catch
-        {
-        }
+        await SocketOperationCleanup.CancelSocketOperationAsync(connectCts, connectTask).ConfigureAwait(false);
 
         await delayTask.ConfigureAwait(false);
 
@@ -336,29 +265,13 @@ internal class TcpClient : IDisposable
 
                 if (connectTask == await Task.WhenAny(connectTask, delayTask).ConfigureAwait(false))
                 {
-                    delayCts.Cancel();
-
-                    try
-                    {
-                        await delayTask.ConfigureAwait(false);
-                    }
-                    catch
-                    {
-                    }
+                    await SocketOperationCleanup.CancelDelayAsync(delayCts, delayTask).ConfigureAwait(false);
 
                     await connectTask.ConfigureAwait(false);
                     return;
                 }
 
-                connectCts.Cancel();
-
-                try
-                {
-                    await connectTask.ConfigureAwait(false);
-                }
-                catch
-                {
-                }
+                await SocketOperationCleanup.CancelSocketOperationAsync(connectCts, connectTask).ConfigureAwait(false);
 
                 await delayTask.ConfigureAwait(false);
 
@@ -368,15 +281,38 @@ internal class TcpClient : IDisposable
 #endif
     }
 
+    /// <summary>Sends bytes with no finite timeout.</summary>
+    /// <param name="buffer">The b uf fe r value.</param>
+    /// <param name="cancellationToken">The c an ce ll at io nt ok en value.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
     public Task<int> SendAsync(byte[] buffer, CancellationToken cancellationToken) => SendAsync(buffer, Timeout.InfiniteTimeSpan, cancellationToken);
 
+    /// <summary>Sends bytes with a timeout in milliseconds.</summary>
+    /// <param name="buffer">The b uf fe r value.</param>
+    /// <param name="timeout">The t im eo ut value.</param>
+    /// <param name="cancellationToken">The c an ce ll at io nt ok en value.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
     public Task<int> SendAsync(byte[] buffer, int timeout, CancellationToken cancellationToken) => SendAsync(buffer, TimeSpan.FromMilliseconds(timeout), cancellationToken);
 
 #if NET6_0_OR_GREATER
+    /// <summary>Sends bytes from read-only memory with no finite timeout.</summary>
+    /// <param name="buffer">The b uf fe r value.</param>
+    /// <param name="cancellationToken">The c an ce ll at io nt ok en value.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
     public Task<int> SendAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken) => SendAsync(buffer, Timeout.InfiniteTimeSpan, cancellationToken);
 
+    /// <summary>Sends bytes from read-only memory with a timeout in milliseconds.</summary>
+    /// <param name="buffer">The b uf fe r value.</param>
+    /// <param name="timeout">The t im eo ut value.</param>
+    /// <param name="cancellationToken">The c an ce ll at io nt ok en value.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
     public Task<int> SendAsync(ReadOnlyMemory<byte> buffer, int timeout, CancellationToken cancellationToken) => SendAsync(buffer, TimeSpan.FromMilliseconds(timeout), cancellationToken);
 
+    /// <summary>Sends bytes from read-only memory with a timeout.</summary>
+    /// <param name="buffer">The b uf fe r value.</param>
+    /// <param name="timeout">The t im eo ut value.</param>
+    /// <param name="cancellationToken">The c an ce ll at io nt ok en value.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
     public async Task<int> SendAsync(ReadOnlyMemory<byte> buffer, TimeSpan timeout, CancellationToken cancellationToken)
     {
         ThrowIfDisposed();
@@ -400,28 +336,12 @@ internal class TcpClient : IDisposable
 
         if (sendTask == await Task.WhenAny(sendTask, delayTask).ConfigureAwait(false))
         {
-            delayCts.Cancel();
-
-            try
-            {
-                await delayTask.ConfigureAwait(false);
-            }
-            catch
-            {
-            }
+            await SocketOperationCleanup.CancelDelayAsync(delayCts, delayTask).ConfigureAwait(false);
 
             return await sendTask.ConfigureAwait(false);
         }
 
-        sendCts.Cancel();
-
-        try
-        {
-            await sendTask.ConfigureAwait(false);
-        }
-        catch
-        {
-        }
+        await SocketOperationCleanup.CancelSocketOperationAsync(sendCts, sendTask).ConfigureAwait(false);
 
         await delayTask.ConfigureAwait(false);
 
@@ -429,13 +349,28 @@ internal class TcpClient : IDisposable
     }
 #endif
 
+#if NET6_0_OR_GREATER
+    /// <summary>Sends bytes with a timeout.</summary>
+    /// <param name="buffer">The b uf fe r value.</param>
+    /// <param name="timeout">The t im eo ut value.</param>
+    /// <param name="cancellationToken">The c an ce ll at io nt ok en value.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
+    public Task<int> SendAsync(byte[] buffer, TimeSpan timeout, CancellationToken cancellationToken)
+    {
+        ThrowIfDisposed();
+
+        return SendAsync(buffer.AsMemory(), timeout, cancellationToken);
+    }
+#else
+    /// <summary>Sends bytes with a timeout.</summary>
+    /// <param name="buffer">The b uf fe r value.</param>
+    /// <param name="timeout">The t im eo ut value.</param>
+    /// <param name="cancellationToken">The c an ce ll at io nt ok en value.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
     public async Task<int> SendAsync(byte[] buffer, TimeSpan timeout, CancellationToken cancellationToken)
     {
         ThrowIfDisposed();
 
-#if NET6_0_OR_GREATER
-        return await SendAsync(buffer.AsMemory(), timeout, cancellationToken).ConfigureAwait(false);
-#else
         Func<AsyncCallback, object, IAsyncResult> begin = (callback, state) => _socket.BeginSend(buffer, 0, buffer.Length, SocketFlags.None, callback, state);
 
         if (timeout == Timeout.InfiniteTimeSpan || cancellationToken.IsCancellationRequested)
@@ -458,46 +393,53 @@ internal class TcpClient : IDisposable
 
                 if (sendTask == await Task.WhenAny(sendTask, delayTask).ConfigureAwait(false))
                 {
-                    delayCts.Cancel();
-
-                    try
-                    {
-                        await delayTask.ConfigureAwait(false);
-                    }
-                    catch
-                    {
-                    }
+                    await SocketOperationCleanup.CancelDelayAsync(delayCts, delayTask).ConfigureAwait(false);
 
                     return await sendTask.ConfigureAwait(false);
                 }
 
-                sendCts.Cancel();
-
-                try
-                {
-                    await sendTask.ConfigureAwait(false);
-                }
-                catch
-                {
-                }
+                await SocketOperationCleanup.CancelSocketOperationAsync(sendCts, sendTask).ConfigureAwait(false);
 
                 await delayTask.ConfigureAwait(false);
 
                 throw new TimeoutException("Failed to Send to the Remote Host '" + _remoteHost + ":" + _remotePort.ToString() + "' within the Timeout Period");
             }
         }
-#endif
     }
+#endif
 
+    /// <summary>Receives bytes with no finite timeout.</summary>
+    /// <param name="buffer">The b uf fe r value.</param>
+    /// <param name="cancellationToken">The c an ce ll at io nt ok en value.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
     public Task<int> ReceiveAsync(byte[] buffer, CancellationToken cancellationToken) => ReceiveAsync(buffer, Timeout.InfiniteTimeSpan, cancellationToken);
 
+    /// <summary>Receives bytes with a timeout in milliseconds.</summary>
+    /// <param name="buffer">The b uf fe r value.</param>
+    /// <param name="timeout">The t im eo ut value.</param>
+    /// <param name="cancellationToken">The c an ce ll at io nt ok en value.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
     public Task<int> ReceiveAsync(byte[] buffer, int timeout, CancellationToken cancellationToken) => ReceiveAsync(buffer, TimeSpan.FromMilliseconds(timeout), cancellationToken);
 
 #if NET6_0_OR_GREATER
+    /// <summary>Receives bytes into memory with no finite timeout.</summary>
+    /// <param name="buffer">The b uf fe r value.</param>
+    /// <param name="cancellationToken">The c an ce ll at io nt ok en value.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
     public Task<int> ReceiveAsync(Memory<byte> buffer, CancellationToken cancellationToken) => ReceiveAsync(buffer, Timeout.InfiniteTimeSpan, cancellationToken);
 
+    /// <summary>Receives bytes into memory with a timeout in milliseconds.</summary>
+    /// <param name="buffer">The b uf fe r value.</param>
+    /// <param name="timeout">The t im eo ut value.</param>
+    /// <param name="cancellationToken">The c an ce ll at io nt ok en value.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
     public Task<int> ReceiveAsync(Memory<byte> buffer, int timeout, CancellationToken cancellationToken) => ReceiveAsync(buffer, TimeSpan.FromMilliseconds(timeout), cancellationToken);
 
+    /// <summary>Receives bytes into memory with a timeout.</summary>
+    /// <param name="buffer">The b uf fe r value.</param>
+    /// <param name="timeout">The t im eo ut value.</param>
+    /// <param name="cancellationToken">The c an ce ll at io nt ok en value.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
     public async Task<int> ReceiveAsync(Memory<byte> buffer, TimeSpan timeout, CancellationToken cancellationToken)
     {
         ThrowIfDisposed();
@@ -521,28 +463,12 @@ internal class TcpClient : IDisposable
 
         if (receiveTask == await Task.WhenAny(receiveTask, delayTask).ConfigureAwait(false))
         {
-            delayCts.Cancel();
-
-            try
-            {
-                await delayTask.ConfigureAwait(false);
-            }
-            catch
-            {
-            }
+            await SocketOperationCleanup.CancelDelayAsync(delayCts, delayTask).ConfigureAwait(false);
 
             return await receiveTask.ConfigureAwait(false);
         }
 
-        receiveCts.Cancel();
-
-        try
-        {
-            await receiveTask.ConfigureAwait(false);
-        }
-        catch
-        {
-        }
+        await SocketOperationCleanup.CancelSocketOperationAsync(receiveCts, receiveTask).ConfigureAwait(false);
 
         await delayTask.ConfigureAwait(false);
 
@@ -550,13 +476,28 @@ internal class TcpClient : IDisposable
     }
 #endif
 
+#if NET6_0_OR_GREATER
+    /// <summary>Receives bytes into an array with a timeout.</summary>
+    /// <param name="buffer">The b uf fe r value.</param>
+    /// <param name="timeout">The t im eo ut value.</param>
+    /// <param name="cancellationToken">The c an ce ll at io nt ok en value.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
+    public Task<int> ReceiveAsync(byte[] buffer, TimeSpan timeout, CancellationToken cancellationToken)
+    {
+        ThrowIfDisposed();
+
+        return ReceiveAsync(buffer.AsMemory(), timeout, cancellationToken);
+    }
+#else
+    /// <summary>Receives bytes into an array with a timeout.</summary>
+    /// <param name="buffer">The b uf fe r value.</param>
+    /// <param name="timeout">The t im eo ut value.</param>
+    /// <param name="cancellationToken">The c an ce ll at io nt ok en value.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
     public async Task<int> ReceiveAsync(byte[] buffer, TimeSpan timeout, CancellationToken cancellationToken)
     {
         ThrowIfDisposed();
 
-#if NET6_0_OR_GREATER
-        return await ReceiveAsync(buffer.AsMemory(), timeout, cancellationToken).ConfigureAwait(false);
-#else
         Func<AsyncCallback, object, IAsyncResult> begin = (callback, state) => _socket.BeginReceive(buffer, 0, buffer.Length, SocketFlags.None, callback, state);
 
         if (timeout == Timeout.InfiniteTimeSpan || cancellationToken.IsCancellationRequested)
@@ -579,70 +520,91 @@ internal class TcpClient : IDisposable
 
                 if (receiveTask == await Task.WhenAny(receiveTask, delayTask).ConfigureAwait(false))
                 {
-                    delayCts.Cancel();
-
-                    try
-                    {
-                        await delayTask.ConfigureAwait(false);
-                    }
-                    catch
-                    {
-                    }
+                    await SocketOperationCleanup.CancelDelayAsync(delayCts, delayTask).ConfigureAwait(false);
 
                     return await receiveTask.ConfigureAwait(false);
                 }
 
-                receiveCts.Cancel();
-
-                try
-                {
-                    await receiveTask.ConfigureAwait(false);
-                }
-                catch
-                {
-                }
+                await SocketOperationCleanup.CancelSocketOperationAsync(receiveCts, receiveTask).ConfigureAwait(false);
 
                 await delayTask.ConfigureAwait(false);
 
                 throw new TimeoutException("Failed to Receive from the Remote Host '" + _remoteHost + ":" + _remotePort.ToString() + "' within the Timeout Period");
             }
         }
+    }
 #endif
+
+    /// <summary>Gets a Boolean socket option when the socket is active.</summary>
+    /// <param name="optionLevel">The socket option level.</param>
+    /// <param name="optionName">The socket option name.</param>
+    /// <returns>The socket option value.</returns>
+    private bool GetBooleanSocketOption(SocketOptionLevel optionLevel, SocketOptionName optionName)
+    {
+        if (_disposed)
+        {
+            return false;
+        }
+
+        var value = _socket.GetSocketOption(optionLevel, optionName);
+        return value is not null && Convert.ToBoolean(value);
     }
 
-    protected virtual void Dispose(bool disposing)
+#if NET6_0_OR_GREATER
+    /// <summary>Gets an integer socket option when the socket is active.</summary>
+    /// <param name="optionLevel">The socket option level.</param>
+    /// <param name="optionName">The socket option name.</param>
+    /// <returns>The socket option value.</returns>
+    private int GetIntegerSocketOption(SocketOptionLevel optionLevel, SocketOptionName optionName)
+    {
+        if (_disposed)
+        {
+            return 0;
+        }
+
+        var value = _socket.GetSocketOption(optionLevel, optionName);
+        return value is null ? 0 : Convert.ToInt32(value);
+    }
+#endif
+
+    /// <summary>Releases managed resources used by the TCP client.</summary>
+    /// <param name="disposing">The d is po si ng value.</param>
+    private void Dispose(bool disposing)
     {
         if (_disposed)
         {
             return;
         }
 
-        if (disposing)
+        if (disposing && _socket is not null)
         {
-            if (_socket != null)
+            try
             {
-                try
-                {
-                    _socket.Shutdown(SocketShutdown.Both);
-                }
-                catch
-                {
-                }
-                finally
-                {
-                    _socket.Dispose();
-                }
+                _socket.Shutdown(SocketShutdown.Both);
+            }
+            catch (SocketException)
+            {
+            }
+            catch (ObjectDisposedException)
+            {
+            }
+            finally
+            {
+                _socket.Dispose();
             }
         }
 
         _disposed = true;
     }
 
+    /// <summary>Throws if the TCP client has been disposed.</summary>
     private void ThrowIfDisposed()
     {
-        if (_disposed)
+        if (!_disposed)
         {
-            throw new ObjectDisposedException(GetType().FullName);
+            return;
         }
+
+        throw new ObjectDisposedException(GetType().FullName);
     }
 }

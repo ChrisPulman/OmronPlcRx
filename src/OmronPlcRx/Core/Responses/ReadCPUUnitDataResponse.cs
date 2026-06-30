@@ -1,5 +1,6 @@
-﻿// Copyright (c) Chris Pulman. All rights reserved.
-// Licensed under the MIT license. See LICENSE file in the project root for full license information.
+// Copyright (c) 2022-2026 Chris Pulman. All rights reserved.
+// Chris Pulman licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for full license information.
 
 using System;
 using System.Collections.Generic;
@@ -7,14 +8,27 @@ using System.Text;
 
 namespace OmronPlcRx.Core.Responses;
 
+/// <summary>Represents the r ea dc pu un it da ta re sp on se type.</summary>
 internal static class ReadCPUUnitDataResponse
 {
+    /// <summary>Stores the c on tr ol le rm od el le ng th value.</summary>
     internal const int ControllerModelLength = 20;
+
+    /// <summary>Stores the c on tr ol le rv er si on le ng th value.</summary>
     internal const int ControllerVersionLength = 20;
+
+    /// <summary>Stores the s ys te mr es er ve dl en gt h value.</summary>
     internal const int SystemReservedLength = 40;
+
+    /// <summary>Stores the a re ad at al en gt h value.</summary>
     internal const int AreaDataLength = 12;
+
+    /// <summary>Stores the t ot al re sp on se le ng th value.</summary>
     internal const int TotalResponseLength = ControllerModelLength + ControllerVersionLength + SystemReservedLength + AreaDataLength;
 
+    /// <summary>Initializes a new instance of the <see cref="ExtractData"/> class.</summary>
+    /// <param name="response">The r es po ns e value.</param>
+    /// <returns>The result produced by the operation.</returns>
     internal static CPUUnitDataResult ExtractData(FINSResponse response)
     {
         if (response.Data?.Length < TotalResponseLength)
@@ -24,15 +38,16 @@ internal static class ReadCPUUnitDataResponse
 
         var data = response.Data;
 
-        var result = default(CPUUnitDataResult);
-
-        result.ControllerModel = ExtractStringValue(SubArray(data, 0, ControllerModelLength));
-
-        result.ControllerVersion = ExtractStringValue(SubArray(data, ControllerModelLength, ControllerVersionLength));
-
-        return result;
+        return new CPUUnitDataResult
+        {
+            ControllerModel = ExtractStringValue(SubArray(data, 0, ControllerModelLength)),
+            ControllerVersion = ExtractStringValue(SubArray(data, ControllerModelLength, ControllerVersionLength)),
+        };
     }
 
+    /// <summary>Initializes a new instance of the <see cref="ExtractStringValue"/> class.</summary>
+    /// <param name="bytes">The b yt es value.</param>
+    /// <returns>The result produced by the operation.</returns>
     private static string ExtractStringValue(byte[] bytes)
     {
         var stringBytes = new List<byte>(bytes.Length);
@@ -49,17 +64,17 @@ internal static class ReadCPUUnitDataResponse
             }
         }
 
-        if (stringBytes.Count == 0)
-        {
-            return string.Empty;
-        }
-
-        return Encoding.ASCII.GetString([.. stringBytes]).Trim();
+        return stringBytes.Count == 0 ? string.Empty : Encoding.ASCII.GetString([.. stringBytes]).Trim();
     }
 
+    /// <summary>Initializes a new instance of the <see cref="SubArray"/> class.</summary>
+    /// <param name="data">The d at a value.</param>
+    /// <param name="index">The i nd ex value.</param>
+    /// <param name="length">The l en gt h value.</param>
+    /// <returns>The result produced by the operation.</returns>
     private static byte[] SubArray(byte[]? data, int index, int length)
     {
-        if (data == null)
+        if (data is null)
         {
             throw new ArgumentNullException(nameof(data));
         }
@@ -69,9 +84,13 @@ internal static class ReadCPUUnitDataResponse
         return result;
     }
 
-    internal record struct CPUUnitDataResult
+    /// <summary>Represents the c pu un it da ta re su lt type.</summary>
+    internal readonly record struct CPUUnitDataResult
     {
-        internal string ControllerModel;
-        internal string ControllerVersion;
+        /// <summary>Gets or sets the controller model value.</summary>
+        internal string ControllerModel { get; init; }
+
+        /// <summary>Gets or sets the controller version value.</summary>
+        internal string ControllerVersion { get; init; }
     }
 }

@@ -1,5 +1,6 @@
-﻿// Copyright (c) Chris Pulman. All rights reserved.
-// Licensed under the MIT license. See LICENSE file in the project root for full license information.
+// Copyright (c) 2022-2026 Chris Pulman. All rights reserved.
+// Chris Pulman licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for full license information.
 
 using System;
 using System.Collections.Generic;
@@ -8,21 +9,35 @@ using OmronPlcRx.Enums;
 
 namespace OmronPlcRx.Core.Requests;
 
+/// <summary>Represents the w ri te me mo ry ar ea bi tr eq ue st type.</summary>
 internal sealed class WriteMemoryAreaBitRequest : FINSRequest
 {
+    /// <summary>Initializes a new instance of the <see cref="WriteMemoryAreaBitRequest"/> class.</summary>
+    /// <param name="plc">The p lc value.</param>
     private WriteMemoryAreaBitRequest(OmronPLCConnection plc)
         : base(plc)
     {
     }
 
+    /// <summary>Gets or sets the address value.</summary>
     internal ushort Address { get; set; }
 
+    /// <summary>Gets or sets the start bit index value.</summary>
     internal byte StartBitIndex { get; set; }
 
+    /// <summary>Gets or sets the data type value.</summary>
     internal MemoryBitDataType DataType { get; set; }
 
+    /// <summary>Gets or sets the values value.</summary>
     internal bool[]? Values { get; set; }
 
+    /// <summary>Initializes a new instance of the <see cref="CreateNew"/> class.</summary>
+    /// <param name="plc">The p lc value.</param>
+    /// <param name="address">The a dd re ss value.</param>
+    /// <param name="startBitIndex">The s ta rt bi ti nd ex value.</param>
+    /// <param name="dataType">The d at yp e value.</param>
+    /// <param name="values">The v al ue s value.</param>
+    /// <returns>A value indicating whether the operation succeeded.</returns>
     internal static WriteMemoryAreaBitRequest CreateNew(OmronPLCConnection plc, ushort address, byte startBitIndex, MemoryBitDataType dataType, bool[] values) => new(plc)
     {
         FunctionCode = (byte)Enums.FunctionCode.MemoryArea,

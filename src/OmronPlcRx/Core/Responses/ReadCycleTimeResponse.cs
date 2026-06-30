@@ -1,5 +1,6 @@
-﻿// Copyright (c) Chris Pulman. All rights reserved.
-// Licensed under the MIT license. See LICENSE file in the project root for full license information.
+// Copyright (c) 2022-2026 Chris Pulman. All rights reserved.
+// Chris Pulman licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for full license information.
 
 using System;
 using OmronPlcRx.Core.Converters;
@@ -7,10 +8,16 @@ using OmronPlcRx.Core.Requests;
 
 namespace OmronPlcRx.Core.Responses;
 
+/// <summary>Represents the r ea dc yc le ti me re sp on se type.</summary>
 internal static class ReadCycleTimeResponse
 {
+    /// <summary>Stores the c yc le ti me it em le ng th value.</summary>
     internal const int CycleTimeItemLength = 4;
 
+    /// <summary>Initializes a new instance of the <see cref="ExtractCycleTime"/> class.</summary>
+    /// <param name="request">The r eq ue st value.</param>
+    /// <param name="response">The r es po ns e value.</param>
+    /// <returns>The result produced by the operation.</returns>
     internal static CycleTimeResult ExtractCycleTime(ReadCycleTimeRequest request, FINSResponse response)
     {
         if (response.Data?.Length < CycleTimeItemLength * 3)
@@ -28,6 +35,9 @@ internal static class ReadCycleTimeResponse
         };
     }
 
+    /// <summary>Initializes a new instance of the <see cref="GetCycleTime"/> class.</summary>
+    /// <param name="bytes">The b yt es value.</param>
+    /// <returns>The result produced by the operation.</returns>
     private static double GetCycleTime(byte[] bytes)
     {
         if (bytes.Length != 4)
@@ -38,17 +48,17 @@ internal static class ReadCycleTimeResponse
         Array.Reverse(bytes);
         var cycleTimeValue = BCDConverter.ToUInt32(bytes);
 
-        if (cycleTimeValue > 0)
-        {
-            return cycleTimeValue / 10d;
-        }
-
-        return 0;
+        return cycleTimeValue > 0 ? cycleTimeValue / 10d : 0;
     }
 
+    /// <summary>Initializes a new instance of the <see cref="SubArray"/> class.</summary>
+    /// <param name="data">The d at a value.</param>
+    /// <param name="index">The i nd ex value.</param>
+    /// <param name="length">The l en gt h value.</param>
+    /// <returns>The result produced by the operation.</returns>
     private static byte[] SubArray(byte[]? data, int index, int length)
     {
-        if (data == null)
+        if (data is null)
         {
             throw new ArgumentNullException(nameof(data), "The Data Array cannot be null");
         }
@@ -58,10 +68,16 @@ internal static class ReadCycleTimeResponse
         return result;
     }
 
-    internal record struct CycleTimeResult
+    /// <summary>Represents the c yc le ti me re su lt type.</summary>
+    internal readonly record struct CycleTimeResult
     {
-        internal double MinimumCycleTime;
-        internal double MaximumCycleTime;
-        internal double AverageCycleTime;
+        /// <summary>Gets or sets the minimum cycle time value.</summary>
+        internal double MinimumCycleTime { get; init; }
+
+        /// <summary>Gets or sets the maximum cycle time value.</summary>
+        internal double MaximumCycleTime { get; init; }
+
+        /// <summary>Gets or sets the average cycle time value.</summary>
+        internal double AverageCycleTime { get; init; }
     }
 }
