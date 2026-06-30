@@ -1,5 +1,6 @@
-// Copyright (c) Chris Pulman. All rights reserved.
-// Licensed under the MIT license. See LICENSE file in the project root for full license information.
+// Copyright (c) 2022-2026 Chris Pulman. All rights reserved.
+// Chris Pulman licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for full license information.
 
 using System;
 using OmronPlcRx.Core.Enums;
@@ -7,30 +8,45 @@ using OmronPlcRx.Core.Requests;
 
 namespace OmronPlcRx.Core.Responses;
 
+/// <summary>Represents the f in sr es po ns e type.</summary>
 internal sealed class FINSResponse
 {
+    /// <summary>Stores the h ea de rl en gt h value.</summary>
     internal const int HeaderLength = 10;
 
+    /// <summary>Stores the c om ma nd le ng th value.</summary>
     internal const int CommandLength = 2;
 
+    /// <summary>Stores the r es po ns ec od el en gt h value.</summary>
     internal const int ResponseCodeLength = 2;
 
+    /// <summary>Initializes a new instance of the <see cref="FINSResponse"/> class.</summary>
     private FINSResponse()
     {
     }
 
+    /// <summary>Gets or sets the service id value.</summary>
     internal byte ServiceID { get; set; }
 
+    /// <summary>Gets the function code value.</summary>
     internal byte FunctionCode { get; private set; }
 
+    /// <summary>Gets or sets the sub function code value.</summary>
     internal byte SubFunctionCode { get; set; }
 
+    /// <summary>Gets or sets the main response code value.</summary>
     internal byte MainResponseCode { get; set; }
 
+    /// <summary>Gets or sets the sub response code value.</summary>
     internal byte SubResponseCode { get; set; }
 
+    /// <summary>Gets the data value.</summary>
     internal byte[]? Data { get; private set; }
 
+    /// <summary>Initializes a new instance of the <see cref="CreateNew"/> class.</summary>
+    /// <param name="message">The m es sa ge value.</param>
+    /// <param name="request">The r eq ue st value.</param>
+    /// <returns>The result produced by the operation.</returns>
     internal static FINSResponse CreateNew(Memory<byte> message, FINSRequest request)
     {
         if (message.Length < HeaderLength + CommandLength + ResponseCodeLength)
@@ -93,8 +109,15 @@ internal sealed class FINSResponse
         return response;
     }
 
+    /// <summary>Represents the v al id at ef un ct io nc od e enumeration.</summary>
+    /// <param name="functionCode">The f un ct io nc od e value.</param>
+    /// <returns>A value indicating whether the operation succeeded.</returns>
     internal static bool ValidateFunctionCode(byte functionCode) => Enum.IsDefined(typeof(FunctionCode), functionCode);
 
+    /// <summary>Initializes a new instance of the <see cref="ValidateSubFunctionCode"/> class.</summary>
+    /// <param name="functionCode">The f un ct io nc od e value.</param>
+    /// <param name="subFunctionCode">The s ub fu nc ti on co de value.</param>
+    /// <returns>A value indicating whether the operation succeeded.</returns>
     internal static bool ValidateSubFunctionCode(byte functionCode, byte subFunctionCode) => (FunctionCode)functionCode switch
     {
         Enums.FunctionCode.AccessRights => Enum.IsDefined(typeof(AccessRightsFunctionCode), subFunctionCode),
@@ -113,6 +136,10 @@ internal sealed class FINSResponse
         _ => false,
     };
 
+    /// <summary>Initializes a new instance of the <see cref="GetSubFunctionCodeName"/> class.</summary>
+    /// <param name="functionCode">The f un ct io nc od e value.</param>
+    /// <param name="subFunctionCode">The s ub fu nc ti on co de value.</param>
+    /// <returns>The result produced by the operation.</returns>
     private static string? GetSubFunctionCodeName(byte functionCode, byte subFunctionCode) => (FunctionCode)functionCode switch
     {
         Enums.FunctionCode.AccessRights => Enum.GetName(typeof(AccessRightsFunctionCode), subFunctionCode),
@@ -131,8 +158,14 @@ internal sealed class FINSResponse
         _ => "Unknown",
     };
 
+    /// <summary>Initializes a new instance of the <see cref="HasNetworkRelayError"/> class.</summary>
+    /// <param name="responseCode">The r es po ns ec od e value.</param>
+    /// <returns>A value indicating whether the operation succeeded.</returns>
     private static bool HasNetworkRelayError(byte responseCode) => (responseCode & (1 << 7)) != 0;
 
+    /// <summary>Initializes a new instance of the <see cref="GetMainResponseCode"/> class.</summary>
+    /// <param name="value">The v al ue value.</param>
+    /// <returns>The result produced by the operation.</returns>
     private static byte GetMainResponseCode(byte value)
     {
         const byte includedBits = 0x7F;
@@ -140,6 +173,9 @@ internal sealed class FINSResponse
         return (byte)(value & includedBits);
     }
 
+    /// <summary>Initializes a new instance of the <see cref="GetSubResponseCode"/> class.</summary>
+    /// <param name="value">The v al ue value.</param>
+    /// <returns>The result produced by the operation.</returns>
     private static byte GetSubResponseCode(byte value)
     {
         const byte includedBits = 0x3F;
@@ -147,6 +183,9 @@ internal sealed class FINSResponse
         return (byte)(value & includedBits);
     }
 
+    /// <summary>Initializes a new instance of the <see cref="ThrowIfResponseError"/> class.</summary>
+    /// <param name="mainCode">The m ai nc od e value.</param>
+    /// <param name="subCode">The s ub co de value.</param>
     private static void ThrowIfResponseError(byte mainCode, byte subCode)
     {
         if (mainCode == 0 && subCode == 0)

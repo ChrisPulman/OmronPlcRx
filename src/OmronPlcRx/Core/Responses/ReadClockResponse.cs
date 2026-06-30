@@ -1,5 +1,6 @@
-// Copyright (c) Chris Pulman. All rights reserved.
-// Licensed under the MIT license. See LICENSE file in the project root for full license information.
+// Copyright (c) 2022-2026 Chris Pulman. All rights reserved.
+// Chris Pulman licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for full license information.
 
 using System;
 using OmronPlcRx.Core.Converters;
@@ -7,12 +8,19 @@ using OmronPlcRx.Core.Requests;
 
 namespace OmronPlcRx.Core.Responses;
 
+/// <summary>Represents the r ea dc lo ck re sp on se type.</summary>
 internal static class ReadClockResponse
 {
+    /// <summary>Stores the d at el en gt h value.</summary>
     internal const int DateLength = 6;
 
+    /// <summary>Stores the d ay of we ek le ng th value.</summary>
     internal const int DayOfWeekLength = 1;
 
+    /// <summary>Initializes a new instance of the <see cref="ExtractClock"/> class.</summary>
+    /// <param name="request">The r eq ue st value.</param>
+    /// <param name="response">The r es po ns e value.</param>
+    /// <returns>The result produced by the operation.</returns>
     internal static ClockResult ExtractClock(ReadClockRequest request, FINSResponse response)
     {
         if (response.Data?.Length < DateLength + DayOfWeekLength)
@@ -29,6 +37,9 @@ internal static class ReadClockResponse
         };
     }
 
+    /// <summary>Initializes a new instance of the <see cref="GetClockDateTime"/> class.</summary>
+    /// <param name="bytes">The b yt es value.</param>
+    /// <returns>The result produced by the operation.</returns>
     private static DateTime GetClockDateTime(byte[] bytes)
     {
         var year = BCDConverter.ToByte(bytes[0]);
@@ -50,6 +61,11 @@ internal static class ReadClockResponse
         throw new FINSException("Invalid DateTime Values received from the PLC Clock");
     }
 
+    /// <summary>Initializes a new instance of the <see cref="SubArray"/> class.</summary>
+    /// <param name="data">The d at a value.</param>
+    /// <param name="index">The i nd ex value.</param>
+    /// <param name="length">The l en gt h value.</param>
+    /// <returns>The result produced by the operation.</returns>
     private static byte[] SubArray(byte[]? data, int index, int length)
     {
         if (data is null)
@@ -62,10 +78,13 @@ internal static class ReadClockResponse
         return result;
     }
 
+    /// <summary>Represents the c lo ck re su lt type.</summary>
     internal struct ClockResult
     {
-        internal DateTime ClockDateTime;
+        /// <summary>Gets or sets the clock date time value.</summary>
+        internal DateTime ClockDateTime { get; set; }
 
-        internal byte DayOfWeek;
+        /// <summary>Gets or sets the day of week value.</summary>
+        internal byte DayOfWeek { get; set; }
     }
 }

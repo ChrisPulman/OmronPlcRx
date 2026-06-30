@@ -1,11 +1,16 @@
-// Copyright (c) Chris Pulman. All rights reserved.
-// Licensed under the MIT license. See LICENSE file in the project root for full license information.
+// Copyright (c) 2022-2026 Chris Pulman. All rights reserved.
+// Chris Pulman licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for full license information.
 
 namespace OmronPlcRx.Core.Enums;
 
+/// <summary>Represents the s er ia lg at ew ay fu nc ti on co de enumeration.</summary>
 internal enum SerialGatewayFunctionCode : byte
 {
+    /// <summary>Represents the c on ve rt to co mp ow ay fc om ma nd enum value.</summary>
     ConvertToCompoWayFCommand = 0x03,
+    /// <summary>Represents the c on ve rt to mo db us rt uc om ma nd enum value.</summary>
     ConvertToModbusRTUCommand = 0x04,
+    /// <summary>Represents the c on ve rt to mo db us as ci ic om ma nd enum value.</summary>
     ConvertToModbusASCIICommand = 0x05,
 }

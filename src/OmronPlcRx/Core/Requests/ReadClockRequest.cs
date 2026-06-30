@@ -1,18 +1,25 @@
-// Copyright (c) Chris Pulman. All rights reserved.
-// Licensed under the MIT license. See LICENSE file in the project root for full license information.
+// Copyright (c) 2022-2026 Chris Pulman. All rights reserved.
+// Chris Pulman licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for full license information.
 
 using System.Collections.Generic;
 using OmronPlcRx.Core.Enums;
 
 namespace OmronPlcRx.Core.Requests;
 
+/// <summary>Represents the r ea dc lo ck re qu es t type.</summary>
 internal sealed class ReadClockRequest : FINSRequest
 {
+    /// <summary>Initializes a new instance of the <see cref="ReadClockRequest"/> class.</summary>
+    /// <param name="plc">The p lc value.</param>
     private ReadClockRequest(OmronPLCConnection plc)
         : base(plc)
     {
     }
 
+    /// <summary>Initializes a new instance of the <see cref="CreateNew"/> class.</summary>
+    /// <param name="plc">The p lc value.</param>
+    /// <returns>The result produced by the operation.</returns>
     internal static ReadClockRequest CreateNew(OmronPLCConnection plc) => new(plc)
     {
         FunctionCode = (byte)Enums.FunctionCode.TimeData,

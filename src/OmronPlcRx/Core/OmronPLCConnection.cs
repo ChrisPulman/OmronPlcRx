@@ -1,5 +1,6 @@
-// Copyright (c) Chris Pulman. All rights reserved.
-// Licensed under the MIT license. See LICENSE file in the project root for full license information.
+// Copyright (c) 2022-2026 Chris Pulman. All rights reserved.
+// Chris Pulman licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for full license information.
 
 using System;
 using System.Threading;
@@ -16,11 +17,14 @@ namespace OmronPlcRx.Core;
 internal sealed class OmronPLCConnection : IDisposable
 {
 #if NET9_0_OR_GREATER
-    private readonly System.Threading.Lock _isInitializedLock = new();
+    /// <summary>Executes the i si ni ti al iz ed lo ck operation.</summary>
+    private readonly Lock _isInitializedLock = new();
 #else
+    /// <summary>Executes the i si ni ti al iz ed lo ck operation.</summary>
     private readonly object _isInitializedLock = new();
 #endif
 
+    /// <summary>Stores the i si ni ti al iz ed value.</summary>
     private bool _isInitialized;
 
     /// <summary>Initializes a new instance of the <see cref="OmronPLCConnection"/> class.</summary>
@@ -106,31 +110,31 @@ internal sealed class OmronPLCConnection : IDisposable
         };
     }
 
-    /// <summary>Gets the local FINS node ID used by the client.</summary>
+    /// <summary>Gets the local node id value.</summary>
     public byte LocalNodeID { get; }
 
-    /// <summary>Gets the remote FINS node ID of the PLC.</summary>
+    /// <summary>Gets the remote node id value.</summary>
     public byte RemoteNodeID { get; }
 
-    /// <summary>Gets the transport connection method (TCP/UDP).</summary>
+    /// <summary>Gets the connection method value.</summary>
     public ConnectionMethod ConnectionMethod { get; }
 
-    /// <summary>Gets the PLC hostname or IP address.</summary>
+    /// <summary>Gets the remote host value.</summary>
     public string RemoteHost { get; }
 
-    /// <summary>Gets the PLC service port.</summary>
+    /// <summary>Gets the port value.</summary>
     public int Port { get; } = 9600;
 
-    /// <summary>Gets or sets the request timeout in milliseconds.</summary>
+    /// <summary>Gets or sets the timeout value.</summary>
     public int Timeout { get; set; }
 
-    /// <summary>Gets or sets the number of retries for transient failures.</summary>
+    /// <summary>Gets or sets the retries value.</summary>
     public int Retries { get; set; }
 
-    /// <summary>Gets the detected PLC type.</summary>
+    /// <summary>Gets the plc type value.</summary>
     public PLCType PLCType { get; private set; } = PLCType.Unknown;
 
-    /// <summary>Gets a value indicating whether the PLC client is initialized.</summary>
+    /// <summary>Gets the is initialized value.</summary>
     public bool IsInitialized
     {
         get
@@ -142,10 +146,10 @@ internal sealed class OmronPLCConnection : IDisposable
         }
     }
 
-    /// <summary>Gets the PLC controller model string.</summary>
+    /// <summary>Gets the controller model value.</summary>
     public string? ControllerModel { get; private set; }
 
-    /// <summary>Gets the PLC controller version string.</summary>
+    /// <summary>Gets the controller version value.</summary>
     public string? ControllerVersion { get; private set; }
 
     /// <summary>Gets the maximum number of words that can be read in a single request for the detected PLC type.</summary>
@@ -154,8 +158,10 @@ internal sealed class OmronPLCConnection : IDisposable
     /// <summary>Gets the maximum number of words that can be written in a single request for the detected PLC type.</summary>
     public ushort MaximumWriteWordLength => PLCType == PLCType.CP1 ? (ushort)496 : (ushort)996;
 
+    /// <summary>Gets the channel value.</summary>
     internal BaseChannel Channel { get; }
 
+    /// <summary>Gets the is n series value.</summary>
     internal bool IsNSeries => PLCType switch
     {
         PLCType.NJ101 => true,
@@ -170,6 +176,7 @@ internal sealed class OmronPLCConnection : IDisposable
         _ => false,
     };
 
+    /// <summary>Gets the is c series value.</summary>
     internal bool IsCSeries => PLCType switch
     {
         PLCType.CP1 => true,
@@ -630,16 +637,23 @@ internal sealed class OmronPLCConnection : IDisposable
         }
     }
 
+    /// <summary>Initializes a new instance of the <see cref="ValidateBitAddress"/> class.</summary>
+    /// <param name="address">The a dd re ss value.</param>
+    /// <param name="dataType">The d at yp e value.</param>
+    /// <returns>A value indicating whether the operation succeeded.</returns>
     private bool ValidateBitAddress(ushort address, MemoryBitDataType dataType) => dataType switch
     {
-        MemoryBitDataType.DataMemory => address < (PLCType == PLCType.NX1P2 ? 16000 : 32768),
+        MemoryBitDataType.DataMemory => address < (PLCType == PLCType.NX1P2 ? 16_000 : 32_768),
         MemoryBitDataType.CommonIO => address < 6144,
         MemoryBitDataType.Work => address < 512,
         MemoryBitDataType.Holding => address < 1536,
-        MemoryBitDataType.Auxiliary => address < (PLCType == PLCType.CJ2 ? 11536 : 960),
+        MemoryBitDataType.Auxiliary => address < (PLCType == PLCType.CJ2 ? 11_536 : 960),
         _ => false,
     };
 
+    /// <summary>Initializes a new instance of the <see cref="ValidateBitDataType"/> class.</summary>
+    /// <param name="dataType">The d at yp e value.</param>
+    /// <returns>A value indicating whether the operation succeeded.</returns>
     private bool ValidateBitDataType(MemoryBitDataType dataType) => dataType switch
     {
         MemoryBitDataType.DataMemory => PLCType != PLCType.CP1,
@@ -650,16 +664,24 @@ internal sealed class OmronPLCConnection : IDisposable
         _ => false,
     };
 
+    /// <summary>Initializes a new instance of the <see cref="ValidateWordStartAddress"/> class.</summary>
+    /// <param name="startAddress">The s ta rt ad dr es s value.</param>
+    /// <param name="length">The l en gt h value.</param>
+    /// <param name="dataType">The d at yp e value.</param>
+    /// <returns>A value indicating whether the operation succeeded.</returns>
     private bool ValidateWordStartAddress(ushort startAddress, int length, MemoryWordDataType dataType) => dataType switch
     {
-        MemoryWordDataType.DataMemory => startAddress + (length - 1) < (PLCType == PLCType.NX1P2 ? 16000 : 32768),
+        MemoryWordDataType.DataMemory => startAddress + (length - 1) < (PLCType == PLCType.NX1P2 ? 16_000 : 32_768),
         MemoryWordDataType.CommonIO => startAddress + (length - 1) < 6144,
         MemoryWordDataType.Work => startAddress + (length - 1) < 512,
         MemoryWordDataType.Holding => startAddress + (length - 1) < 1536,
-        MemoryWordDataType.Auxiliary => startAddress + (length - 1) < (PLCType == PLCType.CJ2 ? 11536 : 960),
+        MemoryWordDataType.Auxiliary => startAddress + (length - 1) < (PLCType == PLCType.CJ2 ? 11_536 : 960),
         _ => false,
     };
 
+    /// <summary>Initializes a new instance of the <see cref="ValidateWordDataType"/> class.</summary>
+    /// <param name="dataType">The d at yp e value.</param>
+    /// <returns>A value indicating whether the operation succeeded.</returns>
     private bool ValidateWordDataType(MemoryWordDataType dataType) => dataType switch
     {
         MemoryWordDataType.DataMemory => true,
@@ -670,6 +692,9 @@ internal sealed class OmronPLCConnection : IDisposable
         _ => false,
     };
 
+    /// <summary>Initializes a new instance of the <see cref="RequestControllerInformation"/> class.</summary>
+    /// <param name="cancellationToken">The c an ce ll at io nt ok en value.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
     private async Task RequestControllerInformation(CancellationToken cancellationToken)
     {
         var request = ReadCPUUnitDataRequest.CreateNew(this);
