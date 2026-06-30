@@ -1,39 +1,42 @@
 // Copyright (c) Chris Pulman. All rights reserved.
-// Licensed under the MIT license.
+// Licensed under the MIT license. See LICENSE file in the project root for full license information.
+
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO.Ports;
-using System.Reactive;
-using System.Reactive.Disposables;
-using System.Reactive.Linq;
 using System.Reflection;
-using DynamicData;
-using ReactiveUI;
 using OmronPlcRx.Enums;
+using ReactiveUI;
+using ReactiveUI.Primitives;
+using ReactiveUI.Primitives.Disposables;
 using PlcLib = global::OmronPlcRx;
 
 namespace OmronPlcRxDashboard.ViewModels;
 
-/// <summary>
-/// Main window view model coordinating connection and tags.
-/// </summary>
+/// <summary>Main window view model coordinating connection and tags.</summary>
 public sealed class MainWindowViewModel : ReactiveObject, IDisposable
 {
+    private readonly ObservableCollection<TagDefinition> _tags = [];
+    private readonly MultipleDisposable _disposables = new();
     private PlcLib.IOmronPlcRx? _plc;
-    private readonly SourceList<TagDefinition> _tags = new();
-    private readonly CompositeDisposable _disposables = new();
+    private bool _isConnected;
+    private string _status = "Idle";
+    private PLCType? _plcType;
+    private string? _controllerModel;
+    private string? _controllerVersion;
 
+    /// <summary>Initializes a new instance of the <see cref="MainWindowViewModel"/> class.</summary>
     public MainWindowViewModel()
     {
-        _tags.Connect().Bind(out var ro).Subscribe().DisposeWith(_disposables);
-        Tags = ro;
+        Tags = new(_tags);
         ConnectionMethods = Enum.GetValues<ConnectionMethod>();
         SerialProtocols = Enum.GetValues<PlcLib.OmronSerialProtocol>();
         SerialParities = Enum.GetValues<Parity>();
         SerialStopBits = Enum.GetValues<StopBits>();
         SerialHandshakes = Enum.GetValues<Handshake>();
         SerialFrameModes = Enum.GetValues<PlcLib.OmronHostLinkFinsFrameMode>();
-        var canConnect = this.WhenAnyValue(v => v.IsConnected).Select(c => !c);
+
+        var canConnect = this.WhenAnyValue(v => v.IsConnected).Select(static isConnected => !isConnected);
         var canDisconnect = this.WhenAnyValue(v => v.IsConnected);
         ConnectCommand = ReactiveCommand.CreateFromTask(ConnectAsync, canConnect);
         DisconnectCommand = ReactiveCommand.Create(Disconnect, canDisconnect);
@@ -65,27 +68,59 @@ public sealed class MainWindowViewModel : ReactiveObject, IDisposable
     /// <summary>Gets observable tag collection.</summary>
     public ReadOnlyObservableCollection<TagDefinition> Tags { get; }
 
-    private bool _isConnected;
     /// <summary>Gets a value indicating whether a PLC connection is active.</summary>
-    public bool IsConnected { get => _isConnected; private set => this.RaiseAndSetIfChanged(ref _isConnected, value); }
+    public bool IsConnected
+    {
+        get => _isConnected;
+        private set => this.RaiseAndSetIfChanged(ref _isConnected, value);
+    }
 
-    private string _status = "Idle";
     /// <summary>Gets status text.</summary>
-    public string Status { get => _status; private set => this.RaiseAndSetIfChanged(ref _status, value); }
+    public string Status
+    {
+        get => _status;
+        private set => this.RaiseAndSetIfChanged(ref _status, value);
+    }
 
-    private PLCType? _plcType;
-    public PLCType? PLCType { get => _plcType; private set => this.RaiseAndSetIfChanged(ref _plcType, value); }
+    /// <summary>Gets the connected PLC type.</summary>
+    public PLCType? PLCType
+    {
+        get => _plcType;
+        private set => this.RaiseAndSetIfChanged(ref _plcType, value);
+    }
 
-    private string? _controllerModel;
-    public string? ControllerModel { get => _controllerModel; private set => this.RaiseAndSetIfChanged(ref _controllerModel, value); }
+    /// <summary>Gets the connected controller model.</summary>
+    public string? ControllerModel
+    {
+        get => _controllerModel;
+        private set => this.RaiseAndSetIfChanged(ref _controllerModel, value);
+    }
 
-    private string? _controllerVersion;
-    public string? ControllerVersion { get => _controllerVersion; private set => this.RaiseAndSetIfChanged(ref _controllerVersion, value); }
+    /// <summary>Gets the connected controller version.</summary>
+    public string? ControllerVersion
+    {
+        get => _controllerVersion;
+        private set => this.RaiseAndSetIfChanged(ref _controllerVersion, value);
+    }
 
-    public ReactiveCommand<Unit, Unit> ConnectCommand { get; }
-    public ReactiveCommand<Unit, Unit> DisconnectCommand { get; }
-    public ReactiveCommand<Unit, Unit> AddTagCommand { get; }
-    public ReactiveCommand<TagDefinition, Unit> WriteTagCommand { get; }
+    /// <summary>Gets the connect command.</summary>
+    public ReactiveCommand<RxVoid, RxVoid> ConnectCommand { get; }
+
+    /// <summary>Gets the disconnect command.</summary>
+    public ReactiveCommand<RxVoid, RxVoid> DisconnectCommand { get; }
+
+    /// <summary>Gets the add tag command.</summary>
+    public ReactiveCommand<RxVoid, RxVoid> AddTagCommand { get; }
+
+    /// <summary>Gets the write tag command.</summary>
+    public ReactiveCommand<TagDefinition, RxVoid> WriteTagCommand { get; }
+
+    /// <inheritdoc />
+    public void Dispose()
+    {
+        Disconnect();
+        _disposables.Dispose();
+    }
 
     private async Task ConnectAsync()
     {
@@ -95,9 +130,9 @@ public sealed class MainWindowViewModel : ReactiveObject, IDisposable
             _plc = Settings.Method == ConnectionMethod.Serial
                 ? new PlcLib.OmronPlcRx(Settings.LocalNodeId, Settings.RemoteNodeId, Settings.ToSerialOptions(), Settings.Timeout, Settings.Retries, TimeSpan.FromMilliseconds(Settings.PollMs))
                 : new PlcLib.OmronPlcRx(Settings.LocalNodeId, Settings.RemoteNodeId, Settings.Method, Settings.Host, Settings.Port, Settings.Timeout, Settings.Retries, TimeSpan.FromMilliseconds(Settings.PollMs));
-            _plc.Errors.Subscribe(e => Status = e?.Message ?? string.Empty).DisposeWith(_disposables);
+            _plc.Errors.SubscribeSafe(error => Status = error?.Message ?? string.Empty, error => Status = error.Message).DisposeWith(_disposables);
             IsConnected = true;
-            await Task.Delay(1000);
+            await Task.Delay(1000).ConfigureAwait(true);
             PLCType = _plc.PLCType;
             ControllerModel = _plc.ControllerModel;
             ControllerVersion = _plc.ControllerVersion;
@@ -125,7 +160,11 @@ public sealed class MainWindowViewModel : ReactiveObject, IDisposable
 
     private async Task AddTagAsync()
     {
-        if (_plc is null) return;
+        if (_plc is null)
+        {
+            return;
+        }
+
         var allowed = new[] { typeof(bool), typeof(byte), typeof(short), typeof(ushort), typeof(int), typeof(uint), typeof(float), typeof(double), typeof(string) };
         var vm = new AddTagViewModel(allowed);
         var dlg = new Views.AddTagDialog { DataContext = vm };
@@ -136,25 +175,27 @@ public sealed class MainWindowViewModel : ReactiveObject, IDisposable
             RegisterTag(tagDef);
         }
 
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(true);
     }
 
     private void RegisterTag(TagDefinition tag)
     {
-        if (_plc is null) return;
+        if (_plc is null)
+        {
+            return;
+        }
+
         try
         {
-            var t = tag.ValueType;
-            // Register
-            _plc.GetType().GetMethod("AddUpdateTagItem")?.MakeGenericMethod(t)
-                .Invoke(_plc, new object[] { tag.Address, tag.Name });
+            var valueType = tag.ValueType;
+            _plc.GetType().GetMethod("AddUpdateTagItem")?.MakeGenericMethod(valueType)
+                .Invoke(_plc, [tag.Address, tag.Name]);
 
-            // Observe
-            var observeMethod = _plc.GetType().GetMethod("Observe")?.MakeGenericMethod(t);
-            var observableObj = observeMethod?.Invoke(_plc, new object?[] { tag.Name });
-            if (observableObj != null)
+            var observeMethod = _plc.GetType().GetMethod("Observe")?.MakeGenericMethod(valueType);
+            var observable = observeMethod?.Invoke(_plc, [tag.Name]);
+            if (observable is not null)
             {
-                SubscribeGeneric(tag, t, observableObj);
+                SubscribeGeneric(tag, valueType, observable);
             }
         }
         catch (Exception ex)
@@ -163,46 +204,43 @@ public sealed class MainWindowViewModel : ReactiveObject, IDisposable
         }
     }
 
-    private void SubscribeGeneric(TagDefinition tag, Type valueType, object observableObj)
+    private void SubscribeGeneric(TagDefinition tag, Type valueType, object observable)
     {
         var helper = typeof(MainWindowViewModel).GetMethod(nameof(SubscribeCore), BindingFlags.NonPublic | BindingFlags.Instance);
-        var g = helper?.MakeGenericMethod(valueType);
-        g?.Invoke(this, new object?[] { tag, observableObj });
+        var genericHelper = helper?.MakeGenericMethod(valueType);
+        genericHelper?.Invoke(this, [tag, observable]);
     }
 
-    private void SubscribeCore<T>(TagDefinition tag, object observableObj)
+    private void SubscribeCore<T>(TagDefinition tag, object observable)
     {
-        if (observableObj is IObservable<T?> obs)
+        if (observable is IObservable<T?> source)
         {
-            obs.Subscribe(v => tag.Value = v is null ? null : (object)v).DisposeWith(_disposables);
+            source.SubscribeSafe(value => tag.Value = value is null ? null : (object)value, error => Status = error.Message).DisposeWith(_disposables);
         }
     }
 
     private Task WriteTagAsync(TagDefinition? tag)
     {
-        if (tag is null || _plc is null) return Task.CompletedTask;
+        if (tag is null || _plc is null)
+        {
+            return Task.CompletedTask;
+        }
+
         try
         {
-            var t = tag.ValueType;
-            var method = _plc.GetType().GetMethod("Value", new[] { typeof(string), t });
-            if (method != null)
+            var valueType = tag.ValueType;
+            var method = _plc.GetType().GetMethod("Value", [typeof(string), valueType]);
+            if (method is not null)
             {
-                var converted = TypeDescriptor.GetConverter(t).ConvertFromString(tag.Value?.ToString() ?? string.Empty);
-                method.Invoke(_plc, new object?[] { tag.Name, converted });
+                var converted = TypeDescriptor.GetConverter(valueType).ConvertFromString(tag.Value?.ToString() ?? string.Empty);
+                _ = method.Invoke(_plc, [tag.Name, converted]);
             }
         }
         catch (Exception ex)
         {
             Status = "Write failed: " + ex.Message;
         }
-        return Task.CompletedTask;
-    }
 
-    /// <inheritdoc />
-    public void Dispose()
-    {
-        Disconnect();
-        _disposables.Dispose();
-        _tags.Dispose();
+        return Task.CompletedTask;
     }
 }

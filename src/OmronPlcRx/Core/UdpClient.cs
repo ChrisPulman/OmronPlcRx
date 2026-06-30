@@ -12,11 +12,14 @@ namespace OmronPlcRx.Core;
 /// <summary>
 /// UDP socket client wrapper providing send and receive operations with timeout and cancellation support across multiple target frameworks.
 /// </summary>
-internal class UdpClient : IDisposable
+internal sealed class UdpClient : IDisposable
 {
     private readonly Socket _socket;
+
     private readonly string _remoteHost;
+
     private readonly int _remotePort;
+
     private bool _disposed;
 
     public UdpClient(string host, int port)
@@ -36,7 +39,7 @@ internal class UdpClient : IDisposable
 
     public UdpClient(IPAddress address, int port)
     {
-        if (address == null)
+        if (address is null)
         {
             throw new ArgumentNullException(nameof(address));
         }
@@ -306,28 +309,25 @@ internal class UdpClient : IDisposable
 #endif
     }
 
-    protected virtual void Dispose(bool disposing)
+    private void Dispose(bool disposing)
     {
         if (_disposed)
         {
             return;
         }
 
-        if (disposing)
+        if (disposing && _socket is not null)
         {
-            if (_socket != null)
+            try
             {
-                try
-                {
-                    _socket.Shutdown(SocketShutdown.Both);
-                }
-                catch
-                {
-                }
-                finally
-                {
-                    _socket.Dispose();
-                }
+                _socket.Shutdown(SocketShutdown.Both);
+            }
+            catch
+            {
+            }
+            finally
+            {
+                _socket.Dispose();
             }
         }
 
@@ -336,9 +336,11 @@ internal class UdpClient : IDisposable
 
     private void ThrowIfDisposed()
     {
-        if (_disposed)
+        if (!_disposed)
         {
-            throw new ObjectDisposedException(GetType().FullName);
+            return;
         }
+
+        throw new ObjectDisposedException(GetType().FullName);
     }
 }

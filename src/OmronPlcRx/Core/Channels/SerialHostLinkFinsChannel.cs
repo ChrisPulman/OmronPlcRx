@@ -15,8 +15,11 @@ namespace OmronPlcRx.Core.Channels;
 internal sealed class SerialHostLinkFinsChannel : BaseChannel
 {
     private readonly OmronSerialOptions _options;
+
     private readonly ConcurrentQueue<byte> _receivedBytes = new();
+
     private SerialPortRx? _port;
+
     private HostLinkFinsFrameCodec? _hostLinkCodec;
 
     internal SerialHostLinkFinsChannel(OmronSerialOptions options)
@@ -58,7 +61,7 @@ internal sealed class SerialHostLinkFinsChannel : BaseChannel
         }
         finally
         {
-            Semaphore.Release();
+            _ = Semaphore.Release();
         }
     }
 
@@ -70,7 +73,7 @@ internal sealed class SerialHostLinkFinsChannel : BaseChannel
 
     protected override Task<SendMessageResult> SendMessageAsync(ReadOnlyMemory<byte> message, int timeout, CancellationToken cancellationToken)
     {
-        if (_port == null)
+        if (_port is null)
         {
             throw new OmronPLCException($"The serial channel for '{RemoteHost}' is not initialized.");
         }
@@ -214,7 +217,7 @@ internal sealed class SerialHostLinkFinsChannel : BaseChannel
     {
         cancellationToken.ThrowIfCancellationRequested();
         _hostLinkCodec = _options.Protocol == OmronSerialProtocol.HostLinkFins ? new HostLinkFinsFrameCodec(_options) : null;
-        _port = new SerialPortRx(_options.PortName, _options.BaudRate, _options.DataBits, _options.Parity, _options.StopBits, _options.Handshake)
+        _port = new(_options.PortName, _options.BaudRate, _options.DataBits, _options.Parity, _options.StopBits, _options.Handshake)
         {
             EnableAutoDataReceive = false,
             ReadTimeout = timeout,
@@ -228,15 +231,17 @@ internal sealed class SerialHostLinkFinsChannel : BaseChannel
         await _port.Open().ConfigureAwait(false);
         _port.RtsEnable = _options.RtsEnable;
         _port.DtrEnable = _options.DtrEnable;
-        if (_options.Protocol == OmronSerialProtocol.Toolbus)
+        if (_options.Protocol != OmronSerialProtocol.Toolbus)
         {
-            await SynchronizeToolbusAsync(timeout, cancellationToken).ConfigureAwait(false);
+            return;
         }
+
+        await SynchronizeToolbusAsync(timeout, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task SynchronizeToolbusAsync(int timeout, CancellationToken cancellationToken)
     {
-        if (_port == null)
+        if (_port is null)
         {
             throw new OmronPLCException($"The Toolbus serial channel for '{RemoteHost}' is not initialized.");
         }
@@ -293,14 +298,14 @@ internal sealed class SerialHostLinkFinsChannel : BaseChannel
         }
 
         await Task.Delay(Math.Min(remaining, 20), cancellationToken).ConfigureAwait(false);
-        PumpReceiveBuffer();
+        _ = PumpReceiveBuffer();
 
         return true;
     }
 
     private int PumpReceiveBuffer()
     {
-        if (_port == null)
+        if (_port is null)
         {
             return 0;
         }

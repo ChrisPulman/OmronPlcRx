@@ -20,7 +20,7 @@ Contents:
 - Supported Types & Encoding
 - BCD Types
 - Reactive Tag & System API
-- ReactiveUI.Extensions Async Observables
+- ReactiveUI.Primitives Async Observables
 - Source Generated Reactive Streams
 - Code Samples
 - Direct Read/Write Core API Overview
@@ -37,7 +37,7 @@ Contents:
 - TCP, UDP, Serial Host Link FINS, or Serial Toolbus FINS transport selection
 - Automatic controller identification (model, version, PLC type classification)
 - Reactive `IObservable<T>` streams per tag and an aggregate stream of all tag changes
-- ReactiveUI.Extensions `IObservableAsync<T>` adapters on `net8.0+`
+- ReactiveUI.Primitives.Async `IObservableAsync<T>` adapters
 - Source generator support for strongly typed PLC tag properties and observable streams
 - Background polling loop with configurable interval (default 100 ms)
 - Safe concurrent access with internal caching
@@ -62,10 +62,10 @@ Install-Package OmronPlcRx
 ## Quick Start
 ```csharp
 using System;
-using System.Reactive.Linq;
 using OmronPlcRx;
 using OmronPlcRx.Enums;
 using OmronPlcRx.Core.Types; // BCD wrappers
+using ReactiveUI.Primitives;
 
 class Program
 {
@@ -96,14 +96,14 @@ class Program
         // Observe single tag
         var sub1 = plc.Observe<bool>("MotorRun")
             .DistinctUntilChanged()
-            .Subscribe(v => Console.WriteLine($"MotorRun -> {v}"));
+            .SubscribeSafe(v => Console.WriteLine($"MotorRun -> {v}"), ex => Console.WriteLine(ex.Message));
 
         // Observe all tag changes
         var subAll = plc.ObserveAll
-            .Subscribe(tag => Console.WriteLine($"Tag {tag?.TagName} = {tag?.Value}"));
+            .SubscribeSafe(tag => Console.WriteLine($"Tag {tag?.TagName} = {tag?.Value}"), ex => Console.WriteLine(ex.Message));
 
         // Observe errors
-        var errSub = plc.Errors.Subscribe(e => Console.WriteLine($"ERROR: {e?.Message}"));
+        var errSub = plc.Errors.SubscribeSafe(e => Console.WriteLine($"ERROR: {e?.Message}"), ex => Console.WriteLine(ex.Message));
 
         // Write (async fire-and-forget)
         plc.Value("MotorRun", true);
@@ -155,7 +155,7 @@ var plc = new OmronPlcRx.OmronPlcRx(
 
 plc.AddUpdateTagItem<short>("D100", "LegacyValue");
 plc.Observe<short>("LegacyValue")
-   .Subscribe(value => Console.WriteLine($"D100 -> {value}"));
+   .SubscribeSafe(value => Console.WriteLine($"D100 -> {value}"), ex => Console.WriteLine(ex.Message));
 ```
 
 Use Toolbus when the PLC serial port is configured for Omron Toolbus. `CreateToolbus` applies the common `115200 8N1` Toolbus settings.
@@ -174,7 +174,7 @@ var plc = new OmronPlcRx.OmronPlcRx(
 
 plc.AddUpdateTagItem<short>("D100", "ToolbusValue");
 plc.Observe<short>("ToolbusValue")
-   .Subscribe(value => Console.WriteLine($"D100 -> {value}"));
+   .SubscribeSafe(value => Console.WriteLine($"D100 -> {value}"), ex => Console.WriteLine(ex.Message));
 ```
 
 Serial notes:
@@ -236,7 +236,7 @@ Example:
 ```csharp
 plc.AddUpdateTagItem<Bcd32>("D800", "BatchNumber");
 plc.Observe<Bcd32>("BatchNumber")
-   .Subscribe(v => Console.WriteLine($"BatchNumber -> {v.Value}"));
+   .SubscribeSafe(v => Console.WriteLine($"BatchNumber -> {v.Value}"), ex => Console.WriteLine(ex.Message));
 plc.Value("BatchNumber", new Bcd32(12345678));
 ```
 
@@ -256,18 +256,16 @@ Methods / Properties:
 Clock/cycle methods return strongly typed result structs (Bytes/Packets sent/received, Duration and payload data).
 
 ---
-## ReactiveUI.Extensions Async Observables
-`net8.0`, `net9.0`, and `net10.0` builds include adapters for the ReactiveUI.Extensions async observable API.
+## ReactiveUI.Primitives Async Observables
+Supported builds include adapters for the ReactiveUI.Primitives.Async observable API.
 
 ```csharp
 using OmronPlcRx.Async;
-using ReactiveUI.Extensions.Async;
+using ReactiveUI.Primitives.Async;
 
 plc.AddUpdateTagItem<bool>("D100.0", "MotorRun");
 
-var nextMotorRun = await plc.ObserveAsync<bool>("MotorRun")
-    .DistinctUntilChanged()
-    .FirstAsync(cancellationToken);
+IObservableAsync<bool?> motorRunStream = plc.ObserveAsync<bool>("MotorRun");
 
 await foreach (var value in plc.ObserveValuesAsync<bool>("MotorRun", cancellationToken))
 {
@@ -320,7 +318,7 @@ Usage:
 var tags = new MachineTags();
 using var binding = tags.BindPlcTags(plc);
 using var subscription = tags.TemperatureRawObservable
-    .Subscribe(value => Console.WriteLine($"Raw temperature -> {value}"));
+    .SubscribeSafe(value => Console.WriteLine($"Raw temperature -> {value}"), ex => Console.WriteLine(ex.Message));
 
 tags.WriteMotorRun(plc, true);
 ```
@@ -335,7 +333,7 @@ plc.AddUpdateTagItem<bool>("D10.0", "SourceFlag");
 plc.AddUpdateTagItem<bool>("D11.0", "TargetFlag");
 plc.Observe<bool>("SourceFlag")
    .DistinctUntilChanged()
-   .Subscribe(v => plc.Value("TargetFlag", !v));
+   .SubscribeSafe(v => plc.Value("TargetFlag", !v), ex => Console.WriteLine(ex.Message));
 ```
 
 2. Unsigned counter & rollover detection
@@ -343,11 +341,11 @@ plc.Observe<bool>("SourceFlag")
 plc.AddUpdateTagItem<uint>("D300", "PulseCounter");
 plc.Observe<uint>("PulseCounter")
    .Pairwise()
-   .Subscribe(p =>
+   .SubscribeSafe(p =>
    {
        var (prev, curr) = (p.FirstOrDefault(), p.Last());
        if (curr < prev) Console.WriteLine("Counter rollover detected");
-   });
+   }, ex => Console.WriteLine(ex.Message));
 ```
 
 3. BCD production count
@@ -355,7 +353,7 @@ plc.Observe<uint>("PulseCounter")
 plc.AddUpdateTagItem<Bcd32>("D500", "ProdCount");
 plc.Observe<Bcd32>("ProdCount")
    .DistinctUntilChanged()
-   .Subscribe(v => Console.WriteLine($"Production Count = {v.Value}"));
+   .SubscribeSafe(v => Console.WriteLine($"Production Count = {v.Value}"), ex => Console.WriteLine(ex.Message));
 ```
 
 4. Double precision accumulation
@@ -363,7 +361,7 @@ plc.Observe<Bcd32>("ProdCount")
 plc.AddUpdateTagItem<double>("D600", "EnergyKWh");
 plc.Observe<double>("EnergyKWh")
    .Sample(TimeSpan.FromSeconds(5))
-   .Subscribe(v => Console.WriteLine($"Energy = {v:F3} kWh"));
+   .SubscribeSafe(v => Console.WriteLine($"Energy = {v:F3} kWh"), ex => Console.WriteLine(ex.Message));
 ```
 
 5. ASCII string with fixed length
@@ -372,7 +370,7 @@ plc.AddUpdateTagItem<string>("D700[16]", "OperatorName");
 plc.Value("OperatorName", "ALICE");
 plc.Observe<string>("OperatorName")
    .DistinctUntilChanged()
-   .Subscribe(n => Console.WriteLine($"Operator = {n}"));
+   .SubscribeSafe(n => Console.WriteLine($"Operator = {n}"), ex => Console.WriteLine(ex.Message));
 ```
 
 6. Byte & UShort handling
@@ -410,7 +408,7 @@ Returned structs include transmission statistics and payload data.
 ## Error Handling
 Operational exceptions (initialization failure, invalid address, read/write errors, unsupported type) are pushed into `Errors`:
 ```csharp
-plc.Errors.Subscribe(e => Console.WriteLine($"[PLC ERR] {e?.Message}"));
+plc.Errors.SubscribeSafe(e => Console.WriteLine($"[PLC ERR] {e?.Message}"), ex => Console.WriteLine(ex.Message));
 ```
 Write errors also surface here because `Value<T>(...)` is fire-and-forget.
 

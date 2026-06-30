@@ -1,4 +1,4 @@
-﻿// Copyright (c) Chris Pulman. All rights reserved.
+// Copyright (c) Chris Pulman. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
 using System;
@@ -10,7 +10,9 @@ namespace OmronPlcRx.Core.Responses;
 internal sealed class FINSResponse
 {
     internal const int HeaderLength = 10;
+
     internal const int CommandLength = 2;
+
     internal const int ResponseCodeLength = 2;
 
     private FINSResponse()
@@ -133,16 +135,16 @@ internal sealed class FINSResponse
 
     private static byte GetMainResponseCode(byte value)
     {
-        byte ignoredBits = 0x80;
+        const byte includedBits = 0x7F;
 
-        return (byte)(value & (byte)~ignoredBits);
+        return (byte)(value & includedBits);
     }
 
     private static byte GetSubResponseCode(byte value)
     {
-        byte ignoredBits = 0xC0;
+        const byte includedBits = 0x3F;
 
-        return (byte)(value & (byte)~ignoredBits);
+        return (byte)(value & includedBits);
     }
 
     private static void ThrowIfResponseError(byte mainCode, byte subCode)
@@ -264,9 +266,11 @@ internal sealed class FINSResponse
             _ => new FINSException("Unknown Error - Main Response Code (0x" + mainCode.ToString("X2") + ") - Sub Response Code (0x" + subCode.ToString("X2") + ")"),
         };
 
-        if (exception != null)
+        if (exception is null)
         {
-            throw exception;
+            return;
         }
+
+        throw exception;
     }
 }

@@ -1,25 +1,14 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>net462;net472;net481;net8.0;net9.0;net10.0</TargetFrameworks>
+    <TargetFrameworks>net462;net472;net481;net8.0;net9.0;net10.0;net11.0</TargetFrameworks>
     <LangVersion>preview</LangVersion>
   </PropertyGroup>
-
-  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
-    <PackageReference Include="PolySharp" Version="1.16.0">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
-    <PackageReference Include="System.Memory" Version="4.6.3" />
-  </ItemGroup>
   
   <ItemGroup>
-    <PackageReference Include="SerialPortRx" Version="3.4.4" />
-    <PackageReference Include="System.Reactive" Version="6.1.0" />
-  </ItemGroup>
-
-  <ItemGroup Condition="'$(TargetFramework)' == 'net8.0' Or '$(TargetFramework)' == 'net9.0' Or '$(TargetFramework)' == 'net10.0'">
-    <PackageReference Include="ReactiveUI.Extensions" Version="2.2.1" />
+    <PackageReference Include="ReactiveUI.Primitives" Version="5.8.0" ExcludeAssets="analyzers" />
+    <PackageReference Include="ReactiveUI.Primitives.Async" Version="5.8.0" ExcludeAssets="analyzers" />
+    <PackageReference Include="SerialPortRx" Version="5.0.20" ExcludeAssets="analyzers" />
   </ItemGroup>
 
   <ItemGroup>

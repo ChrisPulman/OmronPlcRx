@@ -7,17 +7,14 @@ using System.Text;
 
 namespace OmronPlcRx;
 
-/// <summary>
-/// Encodes and decodes Omron FINS frames carried in Host Link serial frames.
-/// </summary>
+/// <summary>Encodes and decodes Omron FINS frames carried in Host Link serial frames.</summary>
 public sealed class HostLinkFinsFrameCodec
 {
     private const string HeaderCode = "FA";
+
     private readonly OmronSerialOptions _options;
 
-    /// <summary>
-    /// Initializes a new instance of the <see cref="HostLinkFinsFrameCodec"/> class.
-    /// </summary>
+    /// <summary>Initializes a new instance of the <see cref="HostLinkFinsFrameCodec"/> class.</summary>
     /// <param name="options">Serial Host Link options.</param>
     public HostLinkFinsFrameCodec(OmronSerialOptions options)
     {
@@ -25,14 +22,12 @@ public sealed class HostLinkFinsFrameCodec
         _options.Validate();
     }
 
-    /// <summary>
-    /// Calculates the Host Link frame-check sequence.
-    /// </summary>
+    /// <summary>Calculates the Host Link frame-check sequence.</summary>
     /// <param name="frameText">Frame text from @ through the final text character, excluding FCS and terminator.</param>
     /// <returns>Two-character uppercase hexadecimal FCS.</returns>
     public static string CalculateFcs(string frameText)
     {
-        if (frameText == null)
+        if (frameText is null)
         {
             throw new ArgumentNullException(nameof(frameText));
         }
@@ -46,9 +41,7 @@ public sealed class HostLinkFinsFrameCodec
         return value.ToString("X2", CultureInfo.InvariantCulture);
     }
 
-    /// <summary>
-    /// Encodes a binary FINS request into an ASCII Host Link FINS frame.
-    /// </summary>
+    /// <summary>Encodes a binary FINS request into an ASCII Host Link FINS frame.</summary>
     /// <param name="finsMessage">Binary FINS request message.</param>
     /// <returns>ASCII Host Link FINS frame including FCS and terminator.</returns>
     public string EncodeRequest(ReadOnlyMemory<byte> finsMessage)
@@ -67,29 +60,27 @@ public sealed class HostLinkFinsFrameCodec
 
         if (_options.FrameMode == OmronHostLinkFinsFrameMode.Direct)
         {
-            body.Append("00"); // ICF: directly connected CPU Unit.
-            body.Append(fins[5].ToString("X2", CultureInfo.InvariantCulture)); // DA2.
-            body.Append(fins[8].ToString("X2", CultureInfo.InvariantCulture)); // SA2.
-            body.Append(fins[9].ToString("X2", CultureInfo.InvariantCulture)); // SID.
-            body.Append(ToHex(fins, 10, fins.Length - 10)); // Command code + text.
+            _ = body.Append("00"); // ICF: directly connected CPU Unit.
+            _ = body.Append(fins[5].ToString("X2", CultureInfo.InvariantCulture)); // DA2.
+            _ = body.Append(fins[8].ToString("X2", CultureInfo.InvariantCulture)); // SA2.
+            _ = body.Append(fins[9].ToString("X2", CultureInfo.InvariantCulture)); // SID.
+            _ = body.Append(ToHex(fins, 10, fins.Length - 10)); // Command code + text.
         }
         else
         {
-            body.Append(ToHex(fins, 0, fins.Length));
+            _ = body.Append(ToHex(fins, 0, fins.Length));
         }
 
         var bodyText = body.ToString();
         return bodyText + CalculateFcs(bodyText) + "*\r";
     }
 
-    /// <summary>
-    /// Decodes an ASCII Host Link FINS response into a binary FINS response message.
-    /// </summary>
+    /// <summary>Decodes an ASCII Host Link FINS response into a binary FINS response message.</summary>
     /// <param name="frame">ASCII Host Link FINS response frame including FCS and terminator.</param>
     /// <returns>Binary FINS response message.</returns>
     public Memory<byte> DecodeResponse(string frame)
     {
-        if (frame == null)
+        if (frame is null)
         {
             throw new ArgumentNullException(nameof(frame));
         }
@@ -131,7 +122,7 @@ public sealed class HostLinkFinsFrameCodec
             throw new OmronPLCException($"The Host Link FINS response header code '{headerCode}' was invalid.");
         }
 
-        var payloadStart = 5;
+        const int payloadStart = 5;
         var hostLinkEndCode = body.Substring(payloadStart, 2);
         if (!string.Equals(hostLinkEndCode, "00", StringComparison.OrdinalIgnoreCase))
         {
@@ -157,7 +148,7 @@ public sealed class HostLinkFinsFrameCodec
         var da2 = ParseByte(payload, 2);
         var sa2 = ParseByte(payload, 4);
         var sid = ParseByte(payload, 6);
-        var commandAndData = FromHex(payload.Substring(8)).ToArray();
+        var commandAndData = FromHex(payload.Remove(0, 8)).ToArray();
         var message = new byte[10 + commandAndData.Length];
         message[0] = icf;
         message[1] = 0x00;
@@ -178,7 +169,7 @@ public sealed class HostLinkFinsFrameCodec
         var builder = new StringBuilder(count * 2);
         for (var i = offset; i < offset + count; i++)
         {
-            builder.Append(bytes[i].ToString("X2", CultureInfo.InvariantCulture));
+            _ = builder.Append(bytes[i].ToString("X2", CultureInfo.InvariantCulture));
         }
 
         return builder.ToString();

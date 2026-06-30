@@ -1,4 +1,4 @@
-﻿// Copyright (c) Chris Pulman. All rights reserved.
+// Copyright (c) Chris Pulman. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
 using System;
@@ -6,28 +6,20 @@ using System.Collections.Generic;
 
 namespace OmronPlcRx.Core.Converters;
 
-/// <summary>
-/// BCDConverter.
-/// </summary>
+/// <summary>BCDConverter.</summary>
 public static class BCDConverter
 {
-    /// <summary>
-    /// Converts to byte.
-    /// </summary>
+    /// <summary>Converts to byte.</summary>
     /// <param name="bcdByte">The BCD byte.</param>
     /// <returns>A byte representing the converted value.</returns>
     public static byte ToByte(byte bcdByte) => ConvertToBinaryBytes([bcdByte])[0];
 
-    /// <summary>
-    /// Converts to int16.
-    /// </summary>
+    /// <summary>Converts to int16.</summary>
     /// <param name="bcdWord">The BCD word.</param>
     /// <returns>A short.</returns>
     public static short ToInt16(short bcdWord) => ToInt16(BitConverter.GetBytes(bcdWord));
 
-    /// <summary>
-    /// Converts to int16.
-    /// </summary>
+    /// <summary>Converts to int16.</summary>
     /// <param name="bcdBytes">The BCD bytes.</param>
     /// <returns>A short.</returns>
     /// <exception cref="ArgumentOutOfRangeException">bcdBytes - The BCD Bytes Array Length must be '2' for conversion to Int16.</exception>
@@ -47,16 +39,12 @@ public static class BCDConverter
         return BitConverter.ToInt16(converted, 0);
     }
 
-    /// <summary>
-    /// Converts to uint16.
-    /// </summary>
+    /// <summary>Converts to uint16.</summary>
     /// <param name="bcdWord">The BCD word.</param>
     /// <returns>A ushort.</returns>
     public static ushort ToUInt16(short bcdWord) => ToUInt16(BitConverter.GetBytes(bcdWord));
 
-    /// <summary>
-    /// Converts to uint16.
-    /// </summary>
+    /// <summary>Converts to uint16.</summary>
     /// <param name="bcdBytes">The BCD bytes.</param>
     /// <returns>A ushort.</returns>
     /// <exception cref="ArgumentOutOfRangeException">bcdBytes - The BCD Bytes Array Length must be '2' for conversion to UInt16.</exception>
@@ -76,9 +64,7 @@ public static class BCDConverter
         return BitConverter.ToUInt16(converted, 0);
     }
 
-    /// <summary>
-    /// Converts to int32.
-    /// </summary>
+    /// <summary>Converts to int32.</summary>
     /// <param name="bcdWord1">The BCD word1.</param>
     /// <param name="bcdWord2">The BCD word2.</param>
     /// <returns>An int.</returns>
@@ -91,9 +77,7 @@ public static class BCDConverter
         return ToInt32([.. integerBytes]);
     }
 
-    /// <summary>
-    /// Converts to int32.
-    /// </summary>
+    /// <summary>Converts to int32.</summary>
     /// <param name="bcdBytes">The BCD bytes.</param>
     /// <returns>An int.</returns>
     /// <exception cref="ArgumentOutOfRangeException">bcdBytes - The BCD Bytes Array Length must be '4' for conversion to Int32.</exception>
@@ -113,9 +97,7 @@ public static class BCDConverter
         return BitConverter.ToInt32(converted, 0);
     }
 
-    /// <summary>
-    /// Converts to uint32.
-    /// </summary>
+    /// <summary>Converts to uint32.</summary>
     /// <param name="bcdWord1">The BCD word1.</param>
     /// <param name="bcdWord2">The BCD word2.</param>
     /// <returns>A uint.</returns>
@@ -128,9 +110,7 @@ public static class BCDConverter
         return ToUInt32([.. integerBytes]);
     }
 
-    /// <summary>
-    /// Converts to uint32.
-    /// </summary>
+    /// <summary>Converts to uint32.</summary>
     /// <param name="bcdBytes">The BCD bytes.</param>
     /// <returns>A uint.</returns>
     /// <exception cref="ArgumentOutOfRangeException">bcdBytes - The BCD Bytes Array Length must be '4' for conversion to UInt32.</exception>
@@ -150,30 +130,22 @@ public static class BCDConverter
         return BitConverter.ToUInt32(converted, 0);
     }
 
-    /// <summary>
-    /// Gets the BCD byte.
-    /// </summary>
+    /// <summary>Gets the BCD byte.</summary>
     /// <param name="binaryValue">The binary value.</param>
     /// <returns>A BCD-encoded byte.</returns>
     public static byte GetBCDByte(byte binaryValue) => ConvertToBCDBytes(binaryValue, 1)[0];
 
-    /// <summary>
-    /// Gets the BCD word.
-    /// </summary>
+    /// <summary>Gets the BCD word.</summary>
     /// <param name="binaryValue">The binary value.</param>
     /// <returns>A BCD-encoded word.</returns>
     public static short GetBCDWord(short binaryValue) => BitConverter.ToInt16(ConvertToBCDBytes(binaryValue, 2), 0);
 
-    /// <summary>
-    /// Gets the BCD word.
-    /// </summary>
+    /// <summary>Gets the BCD word.</summary>
     /// <param name="binaryValue">The binary value.</param>
     /// <returns>A BCD-encoded word.</returns>
     public static short GetBCDWord(ushort binaryValue) => BitConverter.ToInt16(ConvertToBCDBytes(binaryValue, 2), 0);
 
-    /// <summary>
-    /// Gets the BCD words.
-    /// </summary>
+    /// <summary>Gets the BCD words.</summary>
     /// <param name="binaryValue">The binary value.</param>
     /// <returns>An array of two BCD-encoded words.</returns>
     public static short[] GetBCDWords(int binaryValue)
@@ -182,9 +154,7 @@ public static class BCDConverter
         return [BitConverter.ToInt16(bcdBytes, 0), BitConverter.ToInt16(bcdBytes, 2)];
     }
 
-    /// <summary>
-    /// Gets the BCD words.
-    /// </summary>
+    /// <summary>Gets the BCD words.</summary>
     /// <param name="binaryValue">The binary value.</param>
     /// <returns>An array of two BCD-encoded words.</returns>
     public static short[] GetBCDWords(uint binaryValue)
@@ -193,30 +163,22 @@ public static class BCDConverter
         return [BitConverter.ToInt16(bcdBytes, 0), BitConverter.ToInt16(bcdBytes, 2)];
     }
 
-    /// <summary>
-    /// Gets the BCD bytes.
-    /// </summary>
+    /// <summary>Gets the BCD bytes.</summary>
     /// <param name="binaryValue">The binary value.</param>
     /// <returns>A BCD-encoded byte array.</returns>
     public static byte[] GetBCDBytes(short binaryValue) => ConvertToBCDBytes(binaryValue, 2);
 
-    /// <summary>
-    /// Gets the BCD bytes.
-    /// </summary>
+    /// <summary>Gets the BCD bytes.</summary>
     /// <param name="binaryValue">The binary value.</param>
     /// <returns>A BCD-encoded byte array.</returns>
     public static byte[] GetBCDBytes(ushort binaryValue) => ConvertToBCDBytes(binaryValue, 2);
 
-    /// <summary>
-    /// Gets the BCD bytes.
-    /// </summary>
+    /// <summary>Gets the BCD bytes.</summary>
     /// <param name="binaryValue">The binary value.</param>
     /// <returns>A BCD-encoded byte array.</returns>
     public static byte[] GetBCDBytes(int binaryValue) => ConvertToBCDBytes(binaryValue, 4);
 
-    /// <summary>
-    /// Gets the BCD bytes.
-    /// </summary>
+    /// <summary>Gets the BCD bytes.</summary>
     /// <param name="binaryValue">The binary value.</param>
     /// <returns>A BCD-encoded byte array.</returns>
     public static byte[] GetBCDBytes(uint binaryValue) => ConvertToBCDBytes(binaryValue, 4);

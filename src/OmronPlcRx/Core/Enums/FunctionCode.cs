@@ -15,7 +15,7 @@ internal enum FunctionCode : byte
     MessageDisplay = 0x09,
     AccessRights = 0x0C,
     ErrorLog = 0x21,
-    FINSWriteLog = 0x21,
+    FINSWriteLog = ErrorLog,
     FileMemory = 0x22,
     Debugging = 0x23,
     SerialGateway = 0x28,

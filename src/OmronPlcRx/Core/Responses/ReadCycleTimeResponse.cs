@@ -1,4 +1,4 @@
-﻿// Copyright (c) Chris Pulman. All rights reserved.
+// Copyright (c) Chris Pulman. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
 using System;
@@ -38,17 +38,12 @@ internal static class ReadCycleTimeResponse
         Array.Reverse(bytes);
         var cycleTimeValue = BCDConverter.ToUInt32(bytes);
 
-        if (cycleTimeValue > 0)
-        {
-            return cycleTimeValue / 10d;
-        }
-
-        return 0;
+        return cycleTimeValue > 0 ? cycleTimeValue / 10d : 0;
     }
 
     private static byte[] SubArray(byte[]? data, int index, int length)
     {
-        if (data == null)
+        if (data is null)
         {
             throw new ArgumentNullException(nameof(data), "The Data Array cannot be null");
         }
@@ -58,10 +53,12 @@ internal static class ReadCycleTimeResponse
         return result;
     }
 
-    internal record struct CycleTimeResult
+    internal readonly record struct CycleTimeResult
     {
-        internal double MinimumCycleTime;
-        internal double MaximumCycleTime;
-        internal double AverageCycleTime;
+        internal double MinimumCycleTime { get; init; }
+
+        internal double MaximumCycleTime { get; init; }
+
+        internal double AverageCycleTime { get; init; }
     }
 }

@@ -1,27 +1,27 @@
 // Copyright (c) Chris Pulman. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
-using System.Reactive.Linq;
-using System.Reactive.Subjects;
 using OmronPlcRx.Enums;
 using OmronPlcRx.Results;
+using ReactiveUI.Primitives;
+using ReactiveUI.Primitives.Signals;
 
 namespace OmronPlcRx.Tests;
 
 internal sealed class FakeOmronPlcRx : IOmronPlcRx
 {
-    private readonly Subject<OmronPLCException?> _errors = new();
-    private readonly Dictionary<string, BehaviorSubject<object?>> _subjects = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Signal<OmronPLCException?> _errors = new();
+    private readonly Dictionary<string, BehaviorSignal<object?>> _subjects = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, object?> _values = new(StringComparer.OrdinalIgnoreCase);
-    private readonly Subject<global::OmronPlcRx.Tags.IPlcTag?> _all = new();
+    private readonly Signal<global::OmronPlcRx.Tags.IPlcTag?> _all = new();
 
     public List<Registration> Registrations { get; } = [];
 
     public List<Write> Writes { get; } = [];
 
-    public IObservable<global::OmronPlcRx.Tags.IPlcTag?> ObserveAll => _all.AsObservable();
+    public IObservable<global::OmronPlcRx.Tags.IPlcTag?> ObserveAll => _all;
 
-    public IObservable<OmronPLCException?> Errors => _errors.AsObservable();
+    public IObservable<OmronPLCException?> Errors => _errors;
 
     public PLCType PLCType => PLCType.Unknown;
 
@@ -39,7 +39,7 @@ internal sealed class FakeOmronPlcRx : IOmronPlcRx
 
     public IObservable<T?> Observe<T>(string? tagName)
     {
-        if (tagName == null)
+        if (tagName is null)
         {
             throw new ArgumentNullException(nameof(tagName));
         }
@@ -49,7 +49,7 @@ internal sealed class FakeOmronPlcRx : IOmronPlcRx
 
     public T? Value<T>(string? tagName)
     {
-        if (tagName == null)
+        if (tagName is null)
         {
             throw new ArgumentNullException(nameof(tagName));
         }
@@ -59,7 +59,7 @@ internal sealed class FakeOmronPlcRx : IOmronPlcRx
 
     public void Value<T>(string? tagName, T? value)
     {
-        if (tagName == null)
+        if (tagName is null)
         {
             throw new ArgumentNullException(nameof(tagName));
         }
@@ -107,7 +107,7 @@ internal sealed class FakeOmronPlcRx : IOmronPlcRx
         _errors.Dispose();
     }
 
-    private BehaviorSubject<object?> GetSubject(string tagName)
+    private BehaviorSignal<object?> GetSubject(string tagName)
     {
         if (_subjects.TryGetValue(tagName, out var subject))
         {

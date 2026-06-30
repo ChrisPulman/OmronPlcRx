@@ -1,4 +1,4 @@
-﻿// Copyright (c) Chris Pulman. All rights reserved.
+// Copyright (c) Chris Pulman. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
 using System;
@@ -10,6 +10,7 @@ namespace OmronPlcRx.Core.Requests;
 internal abstract class FINSRequest
 {
     internal const int HeaderLength = 10;
+
     internal const int CommandLength = 2;
 
     protected FINSRequest(OmronPLCConnection plc)

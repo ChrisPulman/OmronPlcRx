@@ -1,4 +1,4 @@
-﻿// Copyright (c) Chris Pulman. All rights reserved.
+// Copyright (c) Chris Pulman. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
 using System;
@@ -73,16 +73,12 @@ internal abstract class BaseChannel : IDisposable
 
                 break;
             }
-            catch (Exception)
+            catch (Exception) when (attempts < retries)
             {
-                if (attempts >= retries)
-                {
-                    throw;
-                }
             }
             finally
             {
-                Semaphore.Release();
+                _ = Semaphore.Release();
             }
 
             // Increment the Attempts
@@ -119,7 +115,7 @@ internal abstract class BaseChannel : IDisposable
                 }
                 finally
                 {
-                    Semaphore.Release();
+                    _ = Semaphore.Release();
                 }
             }
 

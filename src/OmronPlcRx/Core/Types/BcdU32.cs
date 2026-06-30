@@ -3,9 +3,7 @@
 
 namespace OmronPlcRx.Core.Types;
 
-/// <summary>
-/// Unsigned 32-bit BCD numeric wrapper.
-/// </summary>
+/// <summary>Unsigned 32-bit BCD numeric wrapper.</summary>
 public readonly record struct BcdU32
 {
     /// <summary>Initializes a new instance of the <see cref="BcdU32"/> struct.</summary>

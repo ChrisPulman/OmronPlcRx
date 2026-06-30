@@ -5,6 +5,7 @@ using OmronPlcRx.Core.Types;
 
 namespace OmronPlcRx.Tests;
 
+/// <summary>Generated PLC tag fixture used by source-generator tests.</summary>
 public sealed partial class GeneratedMachineState
 {
     [PlcTag("D100", Writable = true)]

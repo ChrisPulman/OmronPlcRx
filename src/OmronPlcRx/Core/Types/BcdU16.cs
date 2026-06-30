@@ -3,9 +3,7 @@
 
 namespace OmronPlcRx.Core.Types;
 
-/// <summary>
-/// Unsigned 16-bit BCD numeric wrapper.
-/// </summary>
+/// <summary>Unsigned 16-bit BCD numeric wrapper.</summary>
 public readonly record struct BcdU16
 {
     /// <summary>Initializes a new instance of the <see cref="BcdU16"/> struct.</summary>

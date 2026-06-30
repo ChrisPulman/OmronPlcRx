@@ -1,13 +1,11 @@
-﻿// Copyright (c) Chris Pulman. All rights reserved.
+// Copyright (c) Chris Pulman. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
 using System;
 
 namespace OmronPlcRx.Results;
 
-/// <summary>
-/// Result of a Read Clock operation.
-/// </summary>
+/// <summary>Result of a Read Clock operation.</summary>
 public readonly record struct ReadClockResult
 {
     /// <summary>Gets the total bytes sent.</summary>

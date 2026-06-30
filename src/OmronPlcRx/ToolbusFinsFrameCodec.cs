@@ -5,22 +5,17 @@ using System;
 
 namespace OmronPlcRx;
 
-/// <summary>
-/// Encodes and decodes Omron Toolbus serial frames carrying binary FINS messages.
-/// </summary>
+/// <summary>Encodes and decodes Omron Toolbus serial frames carrying binary FINS messages.</summary>
 public static class ToolbusFinsFrameCodec
 {
     private const int MinimumFinsRequestLength = 12;
+
     private const int MinimumFinsResponseLength = 14;
 
-    /// <summary>
-    /// Gets the Toolbus synchronization frame exchanged before normal 0xAB frames.
-    /// </summary>
+    /// <summary>Gets the Toolbus synchronization frame exchanged before normal 0xAB frames.</summary>
     public static ReadOnlyMemory<byte> SynchronizationFrame => new byte[] { 0xAC, 0x01 };
 
-    /// <summary>
-    /// Encodes a binary FINS message into a Toolbus frame.
-    /// </summary>
+    /// <summary>Encodes a binary FINS message into a Toolbus frame.</summary>
     /// <param name="finsMessage">Binary FINS request message.</param>
     /// <returns>Toolbus frame: 0xAB + length + FINS payload + checksum.</returns>
     public static Memory<byte> EncodeRequest(ReadOnlyMemory<byte> finsMessage)
@@ -47,9 +42,7 @@ public static class ToolbusFinsFrameCodec
         return frame;
     }
 
-    /// <summary>
-    /// Decodes a Toolbus response frame into the contained binary FINS response message.
-    /// </summary>
+    /// <summary>Decodes a Toolbus response frame into the contained binary FINS response message.</summary>
     /// <param name="frame">Complete Toolbus frame.</param>
     /// <returns>Binary FINS response message.</returns>
     public static Memory<byte> DecodeResponse(ReadOnlyMemory<byte> frame)
@@ -99,9 +92,7 @@ public static class ToolbusFinsFrameCodec
         return payload;
     }
 
-    /// <summary>
-    /// Calculates the Toolbus additive checksum over the supplied bytes.
-    /// </summary>
+    /// <summary>Calculates the Toolbus additive checksum over the supplied bytes.</summary>
     /// <param name="data">Frame bytes excluding the checksum tail.</param>
     /// <returns>16-bit additive checksum.</returns>
     public static ushort CalculateChecksum(ReadOnlySpan<byte> data)

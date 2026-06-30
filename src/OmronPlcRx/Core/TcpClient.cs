@@ -12,11 +12,14 @@ namespace OmronPlcRx.Core;
 /// <summary>
 /// TCP socket client wrapper providing connect, send and receive operations with timeout and cancellation support across multiple target frameworks.
 /// </summary>
-internal class TcpClient : IDisposable
+internal sealed class TcpClient : IDisposable
 {
     private readonly Socket _socket;
+
     private readonly string _remoteHost;
+
     private readonly int _remotePort;
+
     private bool _disposed;
 
     public TcpClient(string host, int port)
@@ -38,7 +41,7 @@ internal class TcpClient : IDisposable
 
     public TcpClient(IPAddress address, int port)
     {
-        if (address == null)
+        if (address is null)
         {
             throw new ArgumentNullException(nameof(address));
         }
@@ -60,12 +63,12 @@ internal class TcpClient : IDisposable
 
     internal TcpClient(Socket acceptedSocket)
     {
-        if (acceptedSocket == null)
+        if (acceptedSocket is null)
         {
             throw new ArgumentNullException(nameof(acceptedSocket));
         }
 
-        if (acceptedSocket.LingerState == null)
+        if (acceptedSocket.LingerState is null)
         {
             acceptedSocket.LingerState = new LingerOption(true, 0);
         }
@@ -108,20 +111,17 @@ internal class TcpClient : IDisposable
     {
         get
         {
-            if (!_disposed)
-            {
-                return _socket.NoDelay;
-            }
-
-            return false;
+            return _disposed ? false : _socket.NoDelay;
         }
 
         set
         {
-            if (!_disposed)
+            if (_disposed)
             {
-                _socket.NoDelay = value;
+                return;
             }
+
+            _socket.NoDelay = value;
         }
     }
 
@@ -129,20 +129,17 @@ internal class TcpClient : IDisposable
     {
         get
         {
-            if (!_disposed)
-            {
-                return _socket.LingerState;
-            }
-
-            return null;
+            return _disposed ? null : _socket.LingerState;
         }
 
         set
         {
-            if (!_disposed && value != null)
+            if (_disposed || value is null)
             {
-                _socket.LingerState = value;
+                return;
             }
+
+            _socket.LingerState = value;
         }
     }
 
@@ -150,25 +147,24 @@ internal class TcpClient : IDisposable
     {
         get
         {
-            if (!_disposed)
+            if (_disposed)
             {
-                var value = _socket.GetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive);
-
-                if (value != null && value is bool)
-                {
-                    return Convert.ToBoolean(value);
-                }
+                return false;
             }
 
-            return false;
+            var value = _socket.GetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive);
+
+            return value is not null && value is bool ? Convert.ToBoolean(value) : false;
         }
 
         set
         {
-            if (!_disposed)
+            if (_disposed)
             {
-                _socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, value);
+                return;
             }
+
+            _socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, value);
         }
     }
 
@@ -181,7 +177,7 @@ internal class TcpClient : IDisposable
             {
                 var value = _socket.GetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveInterval);
 
-                if (value != null && value is int)
+                if (value is not null && value is int)
                 {
                     return Convert.ToInt32(value);
                 }
@@ -192,10 +188,12 @@ internal class TcpClient : IDisposable
 
         set
         {
-            if (!_disposed)
+            if (_disposed)
             {
-                _socket.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveInterval, value);
+                return;
             }
+
+            _socket.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveInterval, value);
         }
     }
 
@@ -207,7 +205,7 @@ internal class TcpClient : IDisposable
             {
                 var value = _socket.GetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveTime);
 
-                if (value != null && value is int)
+                if (value is not null && value is int)
                 {
                     return Convert.ToInt32(value);
                 }
@@ -218,10 +216,12 @@ internal class TcpClient : IDisposable
 
         set
         {
-            if (!_disposed)
+            if (_disposed)
             {
-                _socket.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveTime, value);
+                return;
             }
+
+            _socket.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveTime, value);
         }
     }
 
@@ -233,7 +233,7 @@ internal class TcpClient : IDisposable
             {
                 var value = _socket.GetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveRetryCount);
 
-                if (value != null && value is int)
+                if (value is not null && value is int)
                 {
                     return Convert.ToInt32(value);
                 }
@@ -244,10 +244,12 @@ internal class TcpClient : IDisposable
 
         set
         {
-            if (!_disposed)
+            if (_disposed)
             {
-                _socket.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveRetryCount, value);
+                return;
             }
+
+            _socket.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveRetryCount, value);
         }
     }
 #endif
@@ -610,28 +612,25 @@ internal class TcpClient : IDisposable
 #endif
     }
 
-    protected virtual void Dispose(bool disposing)
+    private void Dispose(bool disposing)
     {
         if (_disposed)
         {
             return;
         }
 
-        if (disposing)
+        if (disposing && _socket is not null)
         {
-            if (_socket != null)
+            try
             {
-                try
-                {
-                    _socket.Shutdown(SocketShutdown.Both);
-                }
-                catch
-                {
-                }
-                finally
-                {
-                    _socket.Dispose();
-                }
+                _socket.Shutdown(SocketShutdown.Both);
+            }
+            catch
+            {
+            }
+            finally
+            {
+                _socket.Dispose();
             }
         }
 
@@ -640,9 +639,11 @@ internal class TcpClient : IDisposable
 
     private void ThrowIfDisposed()
     {
-        if (_disposed)
+        if (!_disposed)
         {
-            throw new ObjectDisposedException(GetType().FullName);
+            return;
         }
+
+        throw new ObjectDisposedException(GetType().FullName);
     }
 }

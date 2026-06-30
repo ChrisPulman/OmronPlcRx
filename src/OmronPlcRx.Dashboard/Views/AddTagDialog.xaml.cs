@@ -1,5 +1,5 @@
 // Copyright (c) Chris Pulman. All rights reserved.
-// Licensed under the MIT license.
+// Licensed under the MIT license. See LICENSE file in the project root for full license information.
 using System.Windows;
 using OmronPlcRxDashboard.ViewModels;
 
@@ -13,9 +13,11 @@ public partial class AddTagDialog
 
     private void Ok_Click(object sender, RoutedEventArgs e)
     {
-        if (ViewModel?.CanAccept == true)
+        if (ViewModel?.CanAccept != true)
         {
-            DialogResult = true;
+            return;
         }
+
+        DialogResult = true;
     }
 }

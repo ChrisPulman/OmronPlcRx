@@ -1,11 +1,9 @@
-﻿// Copyright (c) Chris Pulman. All rights reserved.
+// Copyright (c) Chris Pulman. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
 namespace OmronPlcRx.Results;
 
-/// <summary>
-/// Result of a Read Bits operation.
-/// </summary>
+/// <summary>Result of a Read Bits operation.</summary>
 public readonly record struct ReadBitsResult
 {
     /// <summary>Gets the total bytes sent.</summary>

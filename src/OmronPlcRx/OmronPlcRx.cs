@@ -4,8 +4,6 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Reactive.Linq;
-using System.Reactive.Subjects;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -15,6 +13,8 @@ using OmronPlcRx.Core.Types;
 using OmronPlcRx.Enums;
 using OmronPlcRx.Results;
 using OmronPlcRx.Tags;
+using ReactiveUI.Primitives;
+using ReactiveUI.Primitives.Signals;
 
 namespace OmronPlcRx;
 
@@ -25,19 +25,26 @@ namespace OmronPlcRx;
 public sealed class OmronPlcRx : IOmronPlcRx
 {
     private readonly OmronPLCConnection _plc;
+
     private readonly TimeSpan _pollInterval;
+
     private readonly ConcurrentDictionary<string, ITagEntry> _entries = new(StringComparer.OrdinalIgnoreCase);
-    private readonly ConcurrentDictionary<string, BehaviorSubject<object?>> _subjects = new(StringComparer.OrdinalIgnoreCase);
-    private readonly Subject<IPlcTag?> _tagChanged = new();
-    private readonly Subject<OmronPLCException?> _errors = new();
+
+    private readonly ConcurrentDictionary<string, BehaviorSignal<object?>> _subjects = new(StringComparer.OrdinalIgnoreCase);
+
+    private readonly Signal<IPlcTag?> _tagChanged = new();
+
+    private readonly Signal<OmronPLCException?> _errors = new();
+
     private readonly CancellationTokenSource _cts = new();
+
     private readonly Task _pollLoop;
+
     private bool _disposed;
+
     private volatile bool _plcInitialized;
 
-    /// <summary>
-    /// Initializes a new instance of the <see cref="OmronPlcRx" /> class.
-    /// </summary>
+    /// <summary>Initializes a new instance of the <see cref="OmronPlcRx" /> class.</summary>
     /// <param name="localNodeId">The local node identifier.</param>
     /// <param name="remoteNodeId">The remote node identifier.</param>
     /// <param name="connectionMethod">The connection method.</param>
@@ -53,9 +60,7 @@ public sealed class OmronPlcRx : IOmronPlcRx
         _pollLoop = Task.Run(PollLoopAsync);
     }
 
-    /// <summary>
-    /// Initializes a new instance of the <see cref="OmronPlcRx" /> class using serial FINS communications.
-    /// </summary>
+    /// <summary>Initializes a new instance of the <see cref="OmronPlcRx" /> class using serial FINS communications.</summary>
     /// <param name="localNodeId">The local node identifier.</param>
     /// <param name="remoteNodeId">The remote node identifier.</param>
     /// <param name="serialOptions">The serial FINS options.</param>
@@ -64,7 +69,7 @@ public sealed class OmronPlcRx : IOmronPlcRx
     /// <param name="pollInterval">Polling interval (default 100 ms).</param>
     public OmronPlcRx(byte localNodeId, byte remoteNodeId, OmronSerialOptions serialOptions, int timeout = 2000, int retries = 1, TimeSpan? pollInterval = null)
     {
-        if (serialOptions == null)
+        if (serialOptions is null)
         {
             throw new ArgumentNullException(nameof(serialOptions));
         }
@@ -74,17 +79,13 @@ public sealed class OmronPlcRx : IOmronPlcRx
         _pollLoop = Task.Run(PollLoopAsync);
     }
 
-    /// <summary>
-    /// Tag entry abstraction used internally for polymorphic read access.
-    /// </summary>
+    /// <summary>Tag entry abstraction used internally for polymorphic read access.</summary>
     private interface ITagEntry
     {
         /// <summary>Gets the last cached value as a boxed object.</summary>
         IPlcTag? Tag { get; }
 
-        /// <summary>
-        /// Reads the tag value from the PLC updating internal state.
-        /// </summary>
+        /// <summary>Reads the tag value from the PLC updating internal state.</summary>
         /// <param name="plc">PLC connection.</param>
         /// <param name="ct">Cancellation token.</param>
         /// <returns>True if the value changed; otherwise false.</returns>
@@ -92,59 +93,45 @@ public sealed class OmronPlcRx : IOmronPlcRx
     }
 
     /// <inheritdoc />
-    public IObservable<IPlcTag?> ObserveAll => _tagChanged.AsObservable();
+    public IObservable<IPlcTag?> ObserveAll => _tagChanged;
 
     /// <inheritdoc />
-    public IObservable<OmronPLCException?> Errors => _errors.AsObservable();
+    public IObservable<OmronPLCException?> Errors => _errors;
 
     /// <inheritdoc />
     public bool IsDisposed => _disposed;
 
-    /// <summary>
-    /// Gets the type of the PLC.
-    /// </summary>
+    /// <summary>Gets the type of the PLC.</summary>
     /// <value>
     /// The type of the PLC.
     /// </value>
     public PLCType PLCType => _plc.PLCType;
 
-    /// <summary>
-    /// Gets the PLC controller model string.
-    /// </summary>
+    /// <summary>Gets the PLC controller model string.</summary>
     public string? ControllerModel => _plc.ControllerModel;
 
-    /// <summary>
-    /// Gets the PLC controller version string.
-    /// </summary>
+    /// <summary>Gets the PLC controller version string.</summary>
     public string? ControllerVersion => _plc.ControllerVersion;
 
-    /// <summary>
-    /// Reads the PLC real-time clock via the underlying connection.
-    /// </summary>
+    /// <summary>Reads the PLC real-time clock via the underlying connection.</summary>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Clock read result.</returns>
     public Task<ReadClockResult> ReadClockAsync(CancellationToken cancellationToken = default) => _plc.ReadClockAsync(cancellationToken);
 
-    /// <summary>
-    /// Writes the PLC real-time clock (day-of-week inferred) via the underlying connection.
-    /// </summary>
+    /// <summary>Writes the PLC real-time clock (day-of-week inferred) via the underlying connection.</summary>
     /// <param name="newDateTime">New date/time.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Clock write result.</returns>
     public Task<WriteClockResult> WriteClockAsync(DateTime newDateTime, CancellationToken cancellationToken = default) => _plc.WriteClockAsync(newDateTime, cancellationToken);
 
-    /// <summary>
-    /// Writes the PLC real-time clock with explicit day-of-week via the underlying connection.
-    /// </summary>
+    /// <summary>Writes the PLC real-time clock with explicit day-of-week via the underlying connection.</summary>
     /// <param name="newDateTime">New date/time.</param>
     /// <param name="newDayOfWeek">Day of week (0-6).</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Clock write result.</returns>
     public Task<WriteClockResult> WriteClockAsync(DateTime newDateTime, int newDayOfWeek, CancellationToken cancellationToken = default) => _plc.WriteClockAsync(newDateTime, newDayOfWeek, cancellationToken);
 
-    /// <summary>
-    /// Reads PLC scan cycle time statistics via the underlying connection.
-    /// </summary>
+    /// <summary>Reads PLC scan cycle time statistics via the underlying connection.</summary>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Cycle time statistics.</returns>
     public Task<ReadCycleTimeResult> ReadCycleTimeAsync(CancellationToken cancellationToken = default) => _plc.ReadCycleTimeAsync(cancellationToken);
@@ -164,14 +151,14 @@ public sealed class OmronPlcRx : IOmronPlcRx
 
         var tag = new PlcTag<T>(tagName, variable);
         var entry = new TagEntry<T>(tag);
-        _entries.AddOrUpdate(tagName, entry, (_, __) => entry);
-        _subjects.GetOrAdd(tagName, _ => new(default));
+        _ = _entries.AddOrUpdate(tagName, entry, (_, __) => entry);
+        _ = _subjects.GetOrAdd(tagName, _ => new(default));
     }
 
     /// <inheritdoc />
     public IObservable<T?> Observe<T>(string? tagName)
     {
-        if (tagName == null)
+        if (tagName is null)
         {
             throw new ArgumentNullException(nameof(tagName));
         }
@@ -183,23 +170,18 @@ public sealed class OmronPlcRx : IOmronPlcRx
     /// <inheritdoc />
     public T? Value<T>(string? tagName)
     {
-        if (tagName == null)
+        if (tagName is null)
         {
             throw new ArgumentNullException(nameof(tagName));
         }
 
-        if (_entries.TryGetValue(tagName, out var entry) && entry is TagEntry<T> typed && typed.Tag is PlcTag<T> plcTag)
-        {
-            return plcTag.Value;
-        }
-
-        return default;
+        return !_entries.TryGetValue(tagName, out var entry) || entry is not TagEntry<T> typed || typed.Tag is not PlcTag<T> plcTag ? default : plcTag.Value;
     }
 
     /// <inheritdoc />
     public void Value<T>(string? tagName, T? value)
     {
-        if (tagName == null)
+        if (tagName is null)
         {
             throw new ArgumentNullException(nameof(tagName));
         }
@@ -222,9 +204,7 @@ public sealed class OmronPlcRx : IOmronPlcRx
         });
     }
 
-    /// <summary>
-    /// Dispose pattern.
-    /// </summary>
+    /// <summary>Dispose pattern.</summary>
     public void Dispose()
     {
         if (_disposed)
@@ -236,7 +216,7 @@ public sealed class OmronPlcRx : IOmronPlcRx
         _cts.Cancel();
         try
         {
-            _pollLoop.Wait(TimeSpan.FromSeconds(2));
+            _ = _pollLoop.Wait(TimeSpan.FromSeconds(2));
         }
         catch
         {
@@ -258,12 +238,7 @@ public sealed class OmronPlcRx : IOmronPlcRx
 
     private static object? ConvertTo<T>(object value)
     {
-        if (value is T t)
-        {
-            return t;
-        }
-
-        return (T)Convert.ChangeType(value, typeof(T));
+        return value is T t ? t : (T)Convert.ChangeType(value, typeof(T));
     }
 
     private static (string Area, ushort Address, byte? BitIndex) ParseAddress(string address)
@@ -293,7 +268,7 @@ public sealed class OmronPlcRx : IOmronPlcRx
         }
 
         byte? bitIndex = null;
-        if (bitPart != null)
+        if (bitPart is not null)
         {
             if (!byte.TryParse(bitPart, out var bi) || bi > 15)
             {
@@ -319,7 +294,7 @@ public sealed class OmronPlcRx : IOmronPlcRx
         }
 
         var area = basePart.Substring(0, firstDigit).ToUpperInvariant();
-        var numberPart = basePart.Substring(firstDigit);
+        var numberPart = basePart.Remove(0, firstDigit);
         if (!ushort.TryParse(numberPart, out var addr))
         {
             throw new FormatException($"Invalid numeric address in '{address}'");
@@ -437,7 +412,7 @@ public sealed class OmronPlcRx : IOmronPlcRx
 
     private async Task WriteValueAsync<T>(TagEntry<T> entry, T? value, CancellationToken ct)
     {
-        if (value == null)
+        if (value is null)
         {
             return;
         }
@@ -447,7 +422,7 @@ public sealed class OmronPlcRx : IOmronPlcRx
             var raw = entry.Tag.Address;
             var (baseAddr, length) = ExtractStringMeta(raw);
             var (area, addr, bitIndex) = ParseAddress(baseAddr);
-            if (bitIndex != null)
+            if (bitIndex is not null)
             {
                 throw new NotSupportedException("Bit indexing not supported for string types.");
             }
@@ -479,8 +454,7 @@ public sealed class OmronPlcRx : IOmronPlcRx
                 var b2 = bytes[(i * 2) + 1];
 
                 // Store first char (b1) in high byte for consistency with other multi-byte handling (network big-end assumption)
-                var word = (short)((b1 << 8) | b2);
-                words[i] = word;
+                words[i] = (short)((b1 << 8) | b2);
             }
 
             await _plc.WriteWordsAsync(words, addr, ToWordType(area), ct).ConfigureAwait(false);
@@ -614,7 +588,7 @@ public sealed class OmronPlcRx : IOmronPlcRx
             {
                 var (baseAddr, length) = ExtractStringMeta(Tag.Address);
                 var (area, addr, bitIndex) = ParseAddress(baseAddr);
-                if (bitIndex != null)
+                if (bitIndex is not null)
                 {
                     throw new NotSupportedException("Bit indexing not supported for string types.");
                 }
@@ -765,16 +739,16 @@ public sealed class OmronPlcRx : IOmronPlcRx
             }
             else
             {
-                throw new NotSupportedException($"Tag type '{typeof(T).Name}' not supported.");
+                throw new NotSupportedException($"Tag type '{nameof(T)}' not supported.");
             }
 
-            if (!Equals(newVal, Tag.Value) && Tag is PlcTag<T> plcTag)
+            if (Equals(newVal, Tag.Value) || Tag is not PlcTag<T> plcTag)
             {
-                plcTag.Value = (T)newVal;
-                return true;
+                return false;
             }
 
-            return false;
+            plcTag.Value = (T)newVal;
+            return true;
         }
     }
 }

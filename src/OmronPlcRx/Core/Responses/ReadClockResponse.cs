@@ -1,4 +1,4 @@
-﻿// Copyright (c) Chris Pulman. All rights reserved.
+// Copyright (c) Chris Pulman. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
 using System;
@@ -10,6 +10,7 @@ namespace OmronPlcRx.Core.Responses;
 internal static class ReadClockResponse
 {
     internal const int DateLength = 6;
+
     internal const int DayOfWeekLength = 1;
 
     internal static ClockResult ExtractClock(ReadClockRequest request, FINSResponse response)
@@ -51,7 +52,7 @@ internal static class ReadClockResponse
 
     private static byte[] SubArray(byte[]? data, int index, int length)
     {
-        if (data == null)
+        if (data is null)
         {
             throw new ArgumentNullException(nameof(data));
         }
@@ -64,6 +65,7 @@ internal static class ReadClockResponse
     internal struct ClockResult
     {
         internal DateTime ClockDateTime;
+
         internal byte DayOfWeek;
     }
 }

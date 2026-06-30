@@ -1,4 +1,4 @@
-﻿// Copyright (c) Chris Pulman. All rights reserved.
+// Copyright (c) Chris Pulman. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
 using System.Collections.Generic;
@@ -19,5 +19,6 @@ internal sealed class ReadCycleTimeRequest : FINSRequest
         SubFunctionCode = (byte)StatusFunctionCode.ReadCycleTime,
     };
 
-    protected override List<byte> BuildRequestData() => [01]; // Read Cycle Time
+    /// <summary>Reads the PLC cycle time.</summary>
+    protected override List<byte> BuildRequestData() => [01];
 }

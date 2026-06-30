@@ -1,4 +1,4 @@
-﻿// Copyright (c) Chris Pulman. All rights reserved.
+// Copyright (c) Chris Pulman. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
 using System;
@@ -10,9 +10,13 @@ namespace OmronPlcRx.Core.Responses;
 internal static class ReadCPUUnitDataResponse
 {
     internal const int ControllerModelLength = 20;
+
     internal const int ControllerVersionLength = 20;
+
     internal const int SystemReservedLength = 40;
+
     internal const int AreaDataLength = 12;
+
     internal const int TotalResponseLength = ControllerModelLength + ControllerVersionLength + SystemReservedLength + AreaDataLength;
 
     internal static CPUUnitDataResult ExtractData(FINSResponse response)
@@ -24,13 +28,11 @@ internal static class ReadCPUUnitDataResponse
 
         var data = response.Data;
 
-        var result = default(CPUUnitDataResult);
-
-        result.ControllerModel = ExtractStringValue(SubArray(data, 0, ControllerModelLength));
-
-        result.ControllerVersion = ExtractStringValue(SubArray(data, ControllerModelLength, ControllerVersionLength));
-
-        return result;
+        return new CPUUnitDataResult
+        {
+            ControllerModel = ExtractStringValue(SubArray(data, 0, ControllerModelLength)),
+            ControllerVersion = ExtractStringValue(SubArray(data, ControllerModelLength, ControllerVersionLength)),
+        };
     }
 
     private static string ExtractStringValue(byte[] bytes)
@@ -49,17 +51,12 @@ internal static class ReadCPUUnitDataResponse
             }
         }
 
-        if (stringBytes.Count == 0)
-        {
-            return string.Empty;
-        }
-
-        return Encoding.ASCII.GetString([.. stringBytes]).Trim();
+        return stringBytes.Count == 0 ? string.Empty : Encoding.ASCII.GetString([.. stringBytes]).Trim();
     }
 
     private static byte[] SubArray(byte[]? data, int index, int length)
     {
-        if (data == null)
+        if (data is null)
         {
             throw new ArgumentNullException(nameof(data));
         }
@@ -69,9 +66,10 @@ internal static class ReadCPUUnitDataResponse
         return result;
     }
 
-    internal record struct CPUUnitDataResult
+    internal readonly record struct CPUUnitDataResult
     {
-        internal string ControllerModel;
-        internal string ControllerVersion;
+        internal string ControllerModel { get; init; }
+
+        internal string ControllerVersion { get; init; }
     }
 }

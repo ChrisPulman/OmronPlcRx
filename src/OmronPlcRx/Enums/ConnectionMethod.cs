@@ -3,23 +3,15 @@
 
 namespace OmronPlcRx.Enums;
 
-/// <summary>
-/// Transport protocol used for communication with the PLC.
-/// </summary>
+/// <summary>Transport protocol used for communication with the PLC.</summary>
 public enum ConnectionMethod
 {
-    /// <summary>
-    /// Transmission Control Protocol.
-    /// </summary>
+    /// <summary>Transmission Control Protocol.</summary>
     TCP,
 
-    /// <summary>
-    /// User Datagram Protocol.
-    /// </summary>
+    /// <summary>User Datagram Protocol.</summary>
     UDP,
 
-    /// <summary>
-    /// Serial FINS protocol using Host Link FINS or Toolbus framing.
-    /// </summary>
+    /// <summary>Serial FINS protocol using Host Link FINS or Toolbus framing.</summary>
     Serial,
 }

@@ -1,25 +1,19 @@
-﻿// Copyright (c) Chris Pulman. All rights reserved.
+// Copyright (c) Chris Pulman. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
 using System;
 
 namespace OmronPlcRx;
 
-/// <summary>
-/// Represents errors that occur during Omron PLC communication or processing.
-/// </summary>
+/// <summary>Represents errors that occur during Omron PLC communication or processing.</summary>
 public class OmronPLCException : Exception
 {
-    /// <summary>
-    /// Initializes a new instance of the <see cref="OmronPLCException"/> class.
-    /// </summary>
+    /// <summary>Initializes a new instance of the <see cref="OmronPLCException"/> class.</summary>
     public OmronPLCException()
     {
     }
 
-    /// <summary>
-    /// Initializes a new instance of the <see cref="OmronPLCException"/> class with a specified error message.
-    /// </summary>
+    /// <summary>Initializes a new instance of the <see cref="OmronPLCException"/> class with a specified error message.</summary>
     /// <param name="message">The message that describes the error.</param>
     public OmronPLCException(string message)
         : base(message)

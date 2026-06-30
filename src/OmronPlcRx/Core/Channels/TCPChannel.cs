@@ -1,4 +1,4 @@
-﻿// Copyright (c) Chris Pulman. All rights reserved.
+// Copyright (c) Chris Pulman. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
 using System;
@@ -10,9 +10,10 @@ using OmronPlcRx.Core.Results;
 
 namespace OmronPlcRx.Core.Channels;
 
-internal class TCPChannel : BaseChannel
+internal sealed class TCPChannel : BaseChannel
 {
     private const int TcpHeaderLength = 16;
+
     private TcpClient? _client;
 
     internal TCPChannel(string remoteHost, int port)
@@ -61,7 +62,7 @@ internal class TCPChannel : BaseChannel
         }
         finally
         {
-            Semaphore.Release();
+            _ = Semaphore.Release();
         }
     }
 
@@ -93,19 +94,20 @@ internal class TCPChannel : BaseChannel
 
     protected override async Task PurgeReceiveBuffer(int timeout, CancellationToken cancellationToken)
     {
-        if (_client == null)
+        var client = _client;
+        if (client is null)
         {
             return;
         }
 
         try
         {
-            if (!_client.Connected)
+            if (!client.Connected)
             {
                 return;
             }
 
-            if (_client.Available == 0)
+            if (client.Available == 0)
             {
                 await Task.Delay(timeout / 4, cancellationToken);
             }
@@ -113,11 +115,11 @@ internal class TCPChannel : BaseChannel
             var startTimestamp = DateTime.UtcNow;
             var buffer = new byte[2000];
 
-            while (_client.Connected && _client.Available > 0 && DateTime.UtcNow.Subtract(startTimestamp).TotalMilliseconds < timeout)
+            while (client.Connected && client.Available > 0 && DateTime.UtcNow.Subtract(startTimestamp).TotalMilliseconds < timeout)
             {
                 try
                 {
-                    await _client.ReceiveAsync(buffer, timeout, cancellationToken);
+                    await client.ReceiveAsync(buffer, timeout, cancellationToken);
                 }
                 catch
                 {
@@ -165,7 +167,7 @@ internal class TCPChannel : BaseChannel
 
     private async Task InitializeClient(int timeout, CancellationToken cancellationToken)
     {
-        _client = new TcpClient(RemoteHost, Port);
+        _client = new(RemoteHost, Port);
 
         await _client.ConnectAsync(timeout, cancellationToken);
 
@@ -218,23 +220,16 @@ internal class TCPChannel : BaseChannel
 
     private async Task<SendMessageResult> SendMessageAsync1(EnTCPCommandCode command, ReadOnlyMemory<byte> message, int timeout, CancellationToken cancellationToken)
     {
-        if (_client == null)
-        {
-            throw new OmronPLCException("Failed to Send FINS Message to Omron PLC '" + RemoteHost + ":" + Port + "' - The TCP Client is not Initialized");
-        }
-
-        var result = new SendMessageResult
-        {
-            Bytes = 0,
-            Packets = 0,
-        };
+        var client = _client ?? throw new OmronPLCException("Failed to Send FINS Message to Omron PLC '" + RemoteHost + ":" + Port + "' - The TCP Client is not Initialized");
 
         var tcpMessage = BuildFinsTcpMessage(command, message);
+        var bytes = 0;
+        var packets = 0;
 
         try
         {
-            result.Bytes += await _client.SendAsync(tcpMessage.ToArray(), timeout, cancellationToken);
-            result.Packets++;
+            bytes += await client.SendAsync(tcpMessage.ToArray(), timeout, cancellationToken);
+            packets++;
         }
         catch (ObjectDisposedException)
         {
@@ -249,17 +244,19 @@ internal class TCPChannel : BaseChannel
             throw new OmronPLCException("Failed to Send FINS Message to Omron PLC '" + RemoteHost + ":" + Port + "'", e);
         }
 
-        return result;
+        return new SendMessageResult
+        {
+            Bytes = bytes,
+            Packets = packets,
+        };
     }
 
     private async Task<ReceiveMessageResult> ReceiveMessageAsync1(EnTCPCommandCode command, int timeout, CancellationToken cancellationToken)
     {
-        var result = new ReceiveMessageResult
-        {
-            Bytes = 0,
-            Packets = 0,
-            Message = default,
-        };
+        var bytes = 0;
+        var packets = 0;
+        Memory<byte> message = default;
+        var client = _client ?? throw new OmronPLCException("Failed to Receive FINS Message from Omron PLC '" + RemoteHost + ":" + Port + "' - The TCP Client is not Initialized");
 
         try
         {
@@ -273,14 +270,14 @@ internal class TCPChannel : BaseChannel
 
                 if (remainingMs >= 50)
                 {
-                    var receivedBytes = await _client.ReceiveAsync(buffer, remainingMs, cancellationToken);
+                    var receivedBytes = await client.ReceiveAsync(buffer, remainingMs, cancellationToken);
 
                     if (receivedBytes > 0)
                     {
                         receivedData.AddRange(buffer.AsSpan(0, receivedBytes).ToArray());
 
-                        result.Bytes += receivedBytes;
-                        result.Packets++;
+                        bytes += receivedBytes;
+                        packets++;
                     }
                 }
             }
@@ -350,15 +347,15 @@ internal class TCPChannel : BaseChannel
 
                     if (remainingMs >= 50)
                     {
-                        var receivedBytes = await _client.ReceiveAsync(buffer, remainingMs, cancellationToken);
+                        var receivedBytes = await client.ReceiveAsync(buffer, remainingMs, cancellationToken);
 
                         if (receivedBytes > 0)
                         {
                             receivedData.AddRange(buffer.AsSpan(0, receivedBytes).ToArray());
                         }
 
-                        result.Bytes += receivedBytes;
-                        result.Packets++;
+                        bytes += receivedBytes;
+                        packets++;
                     }
                 }
             }
@@ -378,7 +375,7 @@ internal class TCPChannel : BaseChannel
                 throw new OmronPLCException("Failed to Receive FINS Message from Omron PLC '" + RemoteHost + ":" + Port + "' - The FINS Header was Invalid");
             }
 
-            result.Message = receivedData.ToArray();
+            message = receivedData.ToArray();
         }
         catch (ObjectDisposedException)
         {
@@ -393,6 +390,11 @@ internal class TCPChannel : BaseChannel
             throw new OmronPLCException("Failed to Receive FINS Message from Omron PLC '" + RemoteHost + ":" + Port + "'", e);
         }
 
-        return result;
+        return new ReceiveMessageResult
+        {
+            Bytes = bytes,
+            Packets = packets,
+            Message = message,
+        };
     }
 }

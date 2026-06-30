@@ -1,19 +1,19 @@
 // Copyright (c) Chris Pulman. All rights reserved.
-// Licensed under the MIT license.
+// Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
-using System.Reactive;
-using System.Reactive.Linq;
 using System.Text.RegularExpressions;
 using ReactiveUI;
+using ReactiveUI.Primitives;
 
 namespace OmronPlcRxDashboard.ViewModels;
 
-/// <summary>
-/// View model for Add Tag wizard/dialog.
-/// </summary>
-public sealed class AddTagViewModel : ReactiveObject
+/// <summary>View model for Add Tag wizard/dialog.</summary>
+public sealed partial class AddTagViewModel : ReactiveObject
 {
-    private static readonly Regex AddressRegex = new(@"^(?<area>[A-Za-z]{1,3})(?<word>\d+)(?:\.(?<bit>\d{1,2}))?(?:\[(?<len>\d{1,3})\])?$");
+    private static readonly Regex AddressRegex = CreateAddressRegex();
+
+    [GeneratedRegex(@"^(?<area>[A-Za-z]{1,3})(?<word>\d+)(?:\.(?<bit>\d{1,2}))?(?:\[(?<len>\d{1,3})\])?$")]
+    private static partial Regex CreateAddressRegex();
 
     private string _name = string.Empty;
     private string _address = string.Empty;
@@ -25,10 +25,10 @@ public sealed class AddTagViewModel : ReactiveObject
     public AddTagViewModel(IEnumerable<Type> allowedTypes)
     {
         AllowedTypes = new List<Type>(allowedTypes);
-        this.WhenAnyValue(x => x.Name, x => x.Address, x => x.SelectedType)
+        _ = this.WhenAnyValue(x => x.Name, x => x.Address, x => x.SelectedType)
             .Select(_ => Validate(Name, Address))
-            .Subscribe(valid => CanAccept = valid);
-        OkCommand = ReactiveCommand.Create(() => { }, this.WhenAnyValue(v => v.CanAccept));
+            .SubscribeSafe(valid => CanAccept = valid, exception => ValidationMessage = exception.Message);
+        OkCommand = ReactiveCommand.Create(static () => { }, this.WhenAnyValue(v => v.CanAccept));
     }
 
     /// <summary>Gets allowed types.</summary>
@@ -69,8 +69,8 @@ public sealed class AddTagViewModel : ReactiveObject
         private set => this.RaiseAndSetIfChanged(ref _canAccept, value);
     }
 
-    /// <summary>Gets OK command (no-op, for binding state).</summary>
-    public ReactiveCommand<Unit, Unit> OkCommand { get; }
+    /// <summary>Gets OK command.</summary>
+    public ReactiveCommand<RxVoid, RxVoid> OkCommand { get; }
 
     private bool Validate(string? name, string? address)
     {
@@ -79,27 +79,32 @@ public sealed class AddTagViewModel : ReactiveObject
             ValidationMessage = "Name required";
             return false;
         }
+
         if (string.IsNullOrWhiteSpace(address))
         {
             ValidationMessage = "Address required";
             return false;
         }
-        var m = AddressRegex.Match(address.Trim());
-        if (!m.Success)
+
+        var match = AddressRegex.Match(address.Trim());
+        if (!match.Success)
         {
             ValidationMessage = "Invalid address format";
             return false;
         }
-        if (m.Groups["bit"].Success && m.Groups["len"].Success)
+
+        if (match.Groups["bit"].Success && match.Groups["len"].Success)
         {
             ValidationMessage = "Cannot specify bit and length";
             return false;
         }
-        if (m.Groups["bit"].Success && int.Parse(m.Groups["bit"].Value) > 15)
+
+        if (match.Groups["bit"].Success && int.Parse(match.Groups["bit"].Value) > 15)
         {
             ValidationMessage = "Bit index 0-15";
             return false;
         }
+
         ValidationMessage = string.Empty;
         return true;
     }

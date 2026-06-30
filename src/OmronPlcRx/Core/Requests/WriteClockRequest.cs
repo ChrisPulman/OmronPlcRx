@@ -1,4 +1,4 @@
-﻿// Copyright (c) Chris Pulman. All rights reserved.
+// Copyright (c) Chris Pulman. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
 using System;
@@ -27,27 +27,28 @@ internal sealed class WriteClockRequest : FINSRequest
         DayOfWeek = dayOfWeek,
     };
 
-    protected override List<byte> BuildRequestData() => new List<byte>
-        {
-            // Year (Last 2 Digits)
-            BCDConverter.GetBCDByte((byte)(DateTime.Year % 100)),
+    protected override List<byte> BuildRequestData() =>
+    [
 
-            // Month
-            BCDConverter.GetBCDByte((byte)DateTime.Month),
+        // Year (Last 2 Digits)
+        BCDConverter.GetBCDByte((byte)(DateTime.Year % 100)),
 
-            // Day
-            BCDConverter.GetBCDByte((byte)DateTime.Day),
+        // Month
+        BCDConverter.GetBCDByte((byte)DateTime.Month),
 
-            // Hour
-            BCDConverter.GetBCDByte((byte)DateTime.Hour),
+        // Day
+        BCDConverter.GetBCDByte((byte)DateTime.Day),
 
-            // Minute
-            BCDConverter.GetBCDByte((byte)DateTime.Minute),
+        // Hour
+        BCDConverter.GetBCDByte((byte)DateTime.Hour),
 
-            // Second
-            BCDConverter.GetBCDByte((byte)DateTime.Second),
+        // Minute
+        BCDConverter.GetBCDByte((byte)DateTime.Minute),
 
-            // Day of Week
-            BCDConverter.GetBCDByte(DayOfWeek)
-        };
+        // Second
+        BCDConverter.GetBCDByte((byte)DateTime.Second),
+
+        // Day of Week
+        BCDConverter.GetBCDByte(DayOfWeek),
+    ];
 }

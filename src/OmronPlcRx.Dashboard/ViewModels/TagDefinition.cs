@@ -1,17 +1,14 @@
 // Copyright (c) Chris Pulman. All rights reserved.
-// Licensed under the MIT license.
+// Licensed under the MIT license. See LICENSE file in the project root for full license information.
 using System;
 using ReactiveUI;
 
 namespace OmronPlcRxDashboard.ViewModels;
 
-/// <summary>
-/// Represents a PLC tag definition and its current value.
-/// </summary>
+/// <summary>Represents a PLC tag definition and its current value.</summary>
 /// <remarks>Initializes a new instance of the <see cref="TagDefinition"/> class.</remarks>
 public sealed class TagDefinition(string name, string address, Type valueType) : ReactiveObject
 {
-    private object? _value;
 
     /// <summary>Gets the logical tag name.</summary>
     public string Name { get; } = name;
@@ -21,11 +18,10 @@ public sealed class TagDefinition(string name, string address, Type valueType) :
 
     /// <summary>Gets the underlying value type.</summary>
     public Type ValueType { get; } = valueType;
-
     /// <summary>Gets or sets the current value.</summary>
     public object? Value
     {
-        get => _value;
-        set => this.RaiseAndSetIfChanged(ref _value, value);
+        get => field;
+        set => this.RaiseAndSetIfChanged(ref field, value);
     }
 }

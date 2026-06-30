@@ -1,4 +1,4 @@
-﻿// Copyright (c) Chris Pulman. All rights reserved.
+// Copyright (c) Chris Pulman. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
 using System;
@@ -10,7 +10,7 @@ using OmronPlcRx.Core.Results;
 
 namespace OmronPlcRx.Core.Channels;
 
-internal class UDPChannel : BaseChannel
+internal sealed class UDPChannel : BaseChannel
 {
     private UdpClient? _client;
 
@@ -49,7 +49,7 @@ internal class UDPChannel : BaseChannel
         }
         finally
         {
-            Semaphore.Release();
+            _ = Semaphore.Release();
         }
     }
 
@@ -77,17 +77,15 @@ internal class UDPChannel : BaseChannel
 
     protected override async Task<SendMessageResult> SendMessageAsync(ReadOnlyMemory<byte> message, int timeout, CancellationToken cancellationToken)
     {
-        var result = new SendMessageResult
-        {
-            Bytes = 0,
-            Packets = 0,
-        };
+        var bytes = 0;
+        var packets = 0;
+        var client = _client ?? throw new OmronPLCException("Failed to Send FINS Message to Omron PLC '" + RemoteHost + ":" + Port + "' - The UDP Client is not Initialized");
 
         try
         {
             // OmronPlcRx.Sockets.UdpClient expects byte[] and int timeout
-            result.Bytes += await _client.SendAsync(message.ToArray(), timeout, cancellationToken);
-            result.Packets++;
+            bytes += await client.SendAsync(message.ToArray(), timeout, cancellationToken);
+            packets++;
         }
         catch (ObjectDisposedException)
         {
@@ -102,17 +100,19 @@ internal class UDPChannel : BaseChannel
             throw new OmronPLCException("Failed to Send FINS Message to Omron PLC '" + RemoteHost + ":" + Port + "'", e);
         }
 
-        return result;
+        return new SendMessageResult
+        {
+            Bytes = bytes,
+            Packets = packets,
+        };
     }
 
     protected override async Task<ReceiveMessageResult> ReceiveMessageAsync(int timeout, CancellationToken cancellationToken)
     {
-        var result = new ReceiveMessageResult
-        {
-            Bytes = 0,
-            Packets = 0,
-            Message = default(Memory<byte>),
-        };
+        var bytes = 0;
+        var packets = 0;
+        Memory<byte> message = default;
+        var client = _client ?? throw new OmronPLCException("Failed to Receive FINS Message from Omron PLC '" + RemoteHost + ":" + Port + "' - The UDP Client is not Initialized");
 
         try
         {
@@ -126,14 +126,14 @@ internal class UDPChannel : BaseChannel
 
                 if (remainingMs >= 50)
                 {
-                    var receivedBytes = await _client.ReceiveAsync(buffer, remainingMs, cancellationToken);
+                    var receivedBytes = await client.ReceiveAsync(buffer, remainingMs, cancellationToken);
 
                     if (receivedBytes > 0)
                     {
                         receivedData.AddRange(buffer.AsSpan(0, receivedBytes).ToArray());
 
-                        result.Bytes += receivedBytes;
-                        result.Packets++;
+                        bytes += receivedBytes;
+                        packets++;
                     }
                 }
             }
@@ -153,7 +153,7 @@ internal class UDPChannel : BaseChannel
                 throw new OmronPLCException("Failed to Receive FINS Message from Omron PLC '" + RemoteHost + ":" + Port + "' - The FINS Header was Invalid");
             }
 
-            result.Message = receivedData.ToArray();
+            message = receivedData.ToArray();
         }
         catch (ObjectDisposedException)
         {
@@ -168,14 +168,25 @@ internal class UDPChannel : BaseChannel
             throw new OmronPLCException("Failed to Receive FINS Message from Omron PLC '" + RemoteHost + ":" + Port + "'", e);
         }
 
-        return result;
+        return new ReceiveMessageResult
+        {
+            Bytes = bytes,
+            Packets = packets,
+            Message = message,
+        };
     }
 
     protected override async Task PurgeReceiveBuffer(int timeout, CancellationToken cancellationToken)
     {
+        var client = _client;
+        if (client is null)
+        {
+            return;
+        }
+
         try
         {
-            if (_client?.Available == 0)
+            if (client.Available == 0)
             {
                 await Task.Delay(timeout / 4, cancellationToken);
             }
@@ -183,11 +194,11 @@ internal class UDPChannel : BaseChannel
             var startTimestamp = DateTime.UtcNow;
             var buffer = new byte[2000];
 
-            while (_client?.Available > 0 && DateTime.UtcNow.Subtract(startTimestamp).TotalMilliseconds < timeout)
+            while (client.Available > 0 && DateTime.UtcNow.Subtract(startTimestamp).TotalMilliseconds < timeout)
             {
                 try
                 {
-                    await _client.ReceiveAsync(buffer, timeout, cancellationToken);
+                    await client.ReceiveAsync(buffer, timeout, cancellationToken);
                 }
                 catch
                 {

@@ -3,33 +3,21 @@
 
 namespace OmronPlcRx.Enums;
 
-/// <summary>
-/// Word-addressable PLC memory areas.
-/// </summary>
-public enum MemoryWordDataType : byte
+/// <summary>Word-addressable PLC memory areas.</summary>
+public enum MemoryWordDataType
 {
-    /// <summary>
-    /// Data memory area (DM).
-    /// </summary>
+    /// <summary>Data memory area (DM).</summary>
     DataMemory = 0x82,
 
-    /// <summary>
-    /// Common I/O area (CIO).
-    /// </summary>
+    /// <summary>Common I/O area (CIO).</summary>
     CommonIO = 0xB0,
 
-    /// <summary>
-    /// Work area (W).
-    /// </summary>
+    /// <summary>Work area (W).</summary>
     Work = 0xB1,
 
-    /// <summary>
-    /// Holding area (H).
-    /// </summary>
+    /// <summary>Holding area (H).</summary>
     Holding = 0xB2,
 
-    /// <summary>
-    /// Auxiliary area (A).
-    /// </summary>
+    /// <summary>Auxiliary area (A).</summary>
     Auxiliary = 0xB3,
 }

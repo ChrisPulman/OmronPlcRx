@@ -12,17 +12,18 @@ using OmronPlcRx.Results;
 
 namespace OmronPlcRx.Core;
 
-/// <summary>
-/// High-level Omron PLC client facilitating initialization and FINS read/write operations over TCP/UDP.
-/// </summary>
-internal class OmronPLCConnection : IDisposable
+/// <summary>High-level Omron PLC client facilitating initialization and FINS read/write operations over TCP/UDP.</summary>
+internal sealed class OmronPLCConnection : IDisposable
 {
+#if NET9_0_OR_GREATER
+    private readonly System.Threading.Lock _isInitializedLock = new();
+#else
     private readonly object _isInitializedLock = new();
+#endif
+
     private bool _isInitialized;
 
-    /// <summary>
-    /// Initializes a new instance of the <see cref="OmronPLCConnection"/> class.
-    /// </summary>
+    /// <summary>Initializes a new instance of the <see cref="OmronPLCConnection"/> class.</summary>
     /// <param name="localNodeId">Local FINS node identifier (1-254).</param>
     /// <param name="remoteNodeId">Remote PLC FINS node identifier (1-254, not equal to local).</param>
     /// <param name="connectionMethod">Transport to use (TCP/UDP).</param>
@@ -64,7 +65,7 @@ internal class OmronPLCConnection : IDisposable
 
         ConnectionMethod = connectionMethod;
 
-        if (remoteHost == null)
+        if (remoteHost is null)
         {
             throw new ArgumentNullException(nameof(remoteHost), "The Remote Host cannot be Null");
         }
@@ -105,49 +106,31 @@ internal class OmronPLCConnection : IDisposable
         };
     }
 
-    /// <summary>
-    /// Gets the local FINS node ID used by the client.
-    /// </summary>
+    /// <summary>Gets the local FINS node ID used by the client.</summary>
     public byte LocalNodeID { get; }
 
-    /// <summary>
-    /// Gets the remote FINS node ID of the PLC.
-    /// </summary>
+    /// <summary>Gets the remote FINS node ID of the PLC.</summary>
     public byte RemoteNodeID { get; }
 
-    /// <summary>
-    /// Gets the transport connection method (TCP/UDP).
-    /// </summary>
+    /// <summary>Gets the transport connection method (TCP/UDP).</summary>
     public ConnectionMethod ConnectionMethod { get; }
 
-    /// <summary>
-    /// Gets the PLC hostname or IP address.
-    /// </summary>
+    /// <summary>Gets the PLC hostname or IP address.</summary>
     public string RemoteHost { get; }
 
-    /// <summary>
-    /// Gets the PLC service port.
-    /// </summary>
+    /// <summary>Gets the PLC service port.</summary>
     public int Port { get; } = 9600;
 
-    /// <summary>
-    /// Gets or sets the request timeout in milliseconds.
-    /// </summary>
+    /// <summary>Gets or sets the request timeout in milliseconds.</summary>
     public int Timeout { get; set; }
 
-    /// <summary>
-    /// Gets or sets the number of retries for transient failures.
-    /// </summary>
+    /// <summary>Gets or sets the number of retries for transient failures.</summary>
     public int Retries { get; set; }
 
-    /// <summary>
-    /// Gets the detected PLC type.
-    /// </summary>
+    /// <summary>Gets the detected PLC type.</summary>
     public PLCType PLCType { get; private set; } = PLCType.Unknown;
 
-    /// <summary>
-    /// Gets a value indicating whether the PLC client is initialized.
-    /// </summary>
+    /// <summary>Gets a value indicating whether the PLC client is initialized.</summary>
     public bool IsInitialized
     {
         get
@@ -159,24 +142,16 @@ internal class OmronPLCConnection : IDisposable
         }
     }
 
-    /// <summary>
-    /// Gets the PLC controller model string.
-    /// </summary>
+    /// <summary>Gets the PLC controller model string.</summary>
     public string? ControllerModel { get; private set; }
 
-    /// <summary>
-    /// Gets the PLC controller version string.
-    /// </summary>
+    /// <summary>Gets the PLC controller version string.</summary>
     public string? ControllerVersion { get; private set; }
 
-    /// <summary>
-    /// Gets the maximum number of words that can be read in a single request for the detected PLC type.
-    /// </summary>
+    /// <summary>Gets the maximum number of words that can be read in a single request for the detected PLC type.</summary>
     public ushort MaximumReadWordLength => PLCType == PLCType.CP1 ? (ushort)499 : (ushort)999;
 
-    /// <summary>
-    /// Gets the maximum number of words that can be written in a single request for the detected PLC type.
-    /// </summary>
+    /// <summary>Gets the maximum number of words that can be written in a single request for the detected PLC type.</summary>
     public ushort MaximumWriteWordLength => PLCType == PLCType.CP1 ? (ushort)496 : (ushort)996;
 
     internal BaseChannel Channel { get; }
@@ -203,9 +178,7 @@ internal class OmronPLCConnection : IDisposable
         _ => false,
     };
 
-    /// <summary>
-    /// Initializes the communication channel and queries controller information.
-    /// </summary>
+    /// <summary>Initializes the communication channel and queries controller information.</summary>
     /// <param name="cancellationToken">A token to observe while waiting for the task to complete.</param>
     /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
     public async Task InitializeAsync(CancellationToken cancellationToken)
@@ -251,9 +224,7 @@ internal class OmronPLCConnection : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    /// <summary>
-    /// Read a single bit value.
-    /// </summary>
+    /// <summary>Read a single bit value.</summary>
     /// <param name="address">The word address containing the target bit.</param>
     /// <param name="bitIndex">The bit index within the word (0-15).</param>
     /// <param name="dataType">The bit memory area.</param>
@@ -261,9 +232,7 @@ internal class OmronPLCConnection : IDisposable
     /// <returns>The read bit result.</returns>
     public Task<ReadBitsResult> ReadBitAsync(ushort address, byte bitIndex, MemoryBitDataType dataType, CancellationToken cancellationToken) => ReadBitsAsync(address, bitIndex, 1, dataType, cancellationToken);
 
-    /// <summary>
-    /// Read a sequence of bit values.
-    /// </summary>
+    /// <summary>Read a sequence of bit values.</summary>
     /// <param name="address">The word address containing the first bit.</param>
     /// <param name="startBitIndex">The starting bit index within the word (0-15).</param>
     /// <param name="length">Number of bits to read (1-16, not crossing word boundary).</param>
@@ -320,18 +289,14 @@ internal class OmronPLCConnection : IDisposable
         };
     }
 
-    /// <summary>
-    /// Read a single word value.
-    /// </summary>
+    /// <summary>Read a single word value.</summary>
     /// <param name="address">The starting address to read.</param>
     /// <param name="dataType">The word memory area.</param>
     /// <param name="cancellationToken">A token to cancel the request.</param>
     /// <returns>The read words result including values and transmission metrics.</returns>
     public Task<ReadWordsResult> ReadWordAsync(ushort address, MemoryWordDataType dataType, CancellationToken cancellationToken) => ReadWordsAsync(address, 1, dataType, cancellationToken);
 
-    /// <summary>
-    /// Read a sequence of word values.
-    /// </summary>
+    /// <summary>Read a sequence of word values.</summary>
     /// <param name="startAddress">The starting address to read.</param>
     /// <param name="length">Number of words to read.</param>
     /// <param name="dataType">The word memory area.</param>
@@ -382,20 +347,16 @@ internal class OmronPLCConnection : IDisposable
         };
     }
 
-    /// <summary>
-    /// Write a single bit value.
-    /// </summary>
+    /// <summary>Write a single bit value.</summary>
     /// <param name="value">The bit value to write.</param>
     /// <param name="address">The word address containing the target bit.</param>
     /// <param name="bitIndex">The bit index within the word (0-15).</param>
     /// <param name="dataType">The bit memory area.</param>
     /// <param name="cancellationToken">A token to cancel the request.</param>
     /// <returns>The write bits result containing transmission metrics.</returns>
-    public Task<WriteBitsResult> WriteBitAsync(bool value, ushort address, byte bitIndex, MemoryBitDataType dataType, CancellationToken cancellationToken) => WriteBitsAsync(new bool[] { value }, address, bitIndex, dataType, cancellationToken);
+    public Task<WriteBitsResult> WriteBitAsync(bool value, ushort address, byte bitIndex, MemoryBitDataType dataType, CancellationToken cancellationToken) => WriteBitsAsync([value], address, bitIndex, dataType, cancellationToken);
 
-    /// <summary>
-    /// Write a sequence of bit values.
-    /// </summary>
+    /// <summary>Write a sequence of bit values.</summary>
     /// <param name="values">The bit values to write.</param>
     /// <param name="address">The word address containing the first bit.</param>
     /// <param name="startBitIndex">The starting bit index within the word (0-15).</param>
@@ -404,7 +365,7 @@ internal class OmronPLCConnection : IDisposable
     /// <returns>The write bits result containing transmission metrics.</returns>
     public async Task<WriteBitsResult> WriteBitsAsync(bool[] values, ushort address, byte startBitIndex, MemoryBitDataType dataType, CancellationToken cancellationToken)
     {
-        if (values == null)
+        if (values is null)
         {
             throw new ArgumentNullException(nameof(values));
         }
@@ -458,19 +419,15 @@ internal class OmronPLCConnection : IDisposable
         };
     }
 
-    /// <summary>
-    /// Write a single word value.
-    /// </summary>
+    /// <summary>Write a single word value.</summary>
     /// <param name="value">The word value to write.</param>
     /// <param name="address">The starting address to write.</param>
     /// <param name="dataType">The word memory area.</param>
     /// <param name="cancellationToken">A token to cancel the request.</param>
     /// <returns>The write words result containing transmission metrics.</returns>
-    public Task<WriteWordsResult> WriteWordAsync(short value, ushort address, MemoryWordDataType dataType, CancellationToken cancellationToken) => WriteWordsAsync(new short[] { value }, address, dataType, cancellationToken);
+    public Task<WriteWordsResult> WriteWordAsync(short value, ushort address, MemoryWordDataType dataType, CancellationToken cancellationToken) => WriteWordsAsync([value], address, dataType, cancellationToken);
 
-    /// <summary>
-    /// Write a sequence of word values.
-    /// </summary>
+    /// <summary>Write a sequence of word values.</summary>
     /// <param name="values">The word values to write.</param>
     /// <param name="startAddress">The starting address to write.</param>
     /// <param name="dataType">The word memory area.</param>
@@ -478,7 +435,7 @@ internal class OmronPLCConnection : IDisposable
     /// <returns>The write words result containing transmission metrics.</returns>
     public async Task<WriteWordsResult> WriteWordsAsync(short[] values, ushort startAddress, MemoryWordDataType dataType, CancellationToken cancellationToken)
     {
-        if (values == null)
+        if (values is null)
         {
             throw new ArgumentNullException(nameof(values));
         }
@@ -527,9 +484,7 @@ internal class OmronPLCConnection : IDisposable
         };
     }
 
-    /// <summary>
-    /// Read the current PLC real-time clock value.
-    /// </summary>
+    /// <summary>Read the current PLC real-time clock value.</summary>
     /// <param name="cancellationToken">A token to cancel the request.</param>
     /// <returns>The read clock result.</returns>
     public async Task<ReadClockResult> ReadClockAsync(CancellationToken cancellationToken)
@@ -560,17 +515,13 @@ internal class OmronPLCConnection : IDisposable
         };
     }
 
-    /// <summary>
-    /// Write the PLC real-time clock value.
-    /// </summary>
+    /// <summary>Write the PLC real-time clock value.</summary>
     /// <param name="newDateTime">The new date and time.</param>
     /// <param name="cancellationToken">A token to cancel the request.</param>
     /// <returns>The write clock result.</returns>
     public Task<WriteClockResult> WriteClockAsync(DateTime newDateTime, CancellationToken cancellationToken) => WriteClockAsync(newDateTime, (int)newDateTime.DayOfWeek, cancellationToken);
 
-    /// <summary>
-    /// Write the PLC real-time clock value with a specific day-of-week.
-    /// </summary>
+    /// <summary>Write the PLC real-time clock value with a specific day-of-week.</summary>
     /// <param name="newDateTime">The new date and time.</param>
     /// <param name="newDayOfWeek">The day of week (0-6).</param>
     /// <param name="cancellationToken">A token to cancel the request.</param>
@@ -625,9 +576,7 @@ internal class OmronPLCConnection : IDisposable
         };
     }
 
-    /// <summary>
-    /// Read the PLC scan cycle time statistics.
-    /// </summary>
+    /// <summary>Read the PLC scan cycle time statistics.</summary>
     /// <param name="cancellationToken">A token to cancel the request.</param>
     /// <returns>The read cycle time result with minimum/maximum/average values.</returns>
     public async Task<ReadCycleTimeResult> ReadCycleTimeAsync(CancellationToken cancellationToken)
@@ -664,20 +613,20 @@ internal class OmronPLCConnection : IDisposable
         };
     }
 
-    /// <summary>
-    /// Releases resources used by the client and channel.
-    /// </summary>
+    /// <summary>Releases resources used by the client and channel.</summary>
     /// <param name="disposing">True to dispose managed resources; otherwise, false.</param>
-    protected virtual void Dispose(bool disposing)
+    private void Dispose(bool disposing)
     {
-        if (disposing)
+        if (!disposing)
         {
-            Channel.Dispose();
+            return;
+        }
 
-            lock (_isInitializedLock)
-            {
-                _isInitialized = false;
-            }
+        Channel.Dispose();
+
+        lock (_isInitializedLock)
+        {
+            _isInitialized = false;
         }
     }
 
@@ -779,9 +728,11 @@ internal class OmronPLCConnection : IDisposable
             }
         }
 
-        if (result.ControllerVersion?.Length > 0)
+        if (!(result.ControllerVersion?.Length > 0))
         {
-            ControllerVersion = result.ControllerVersion;
+            return;
         }
+
+        ControllerVersion = result.ControllerVersion;
     }
 }

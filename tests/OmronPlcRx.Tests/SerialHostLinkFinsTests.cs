@@ -8,14 +8,19 @@ using TUnit.Core;
 
 namespace OmronPlcRx.Tests;
 
+/// <summary>Tests serial Host Link FINS and Toolbus framing behavior.</summary>
 public sealed class SerialHostLinkFinsTests
 {
+    /// <summary>Verifies the connection method enum exposes serial transport.</summary>
+    /// <returns>A task that represents the asynchronous test.</returns>
     [Test]
     public async Task ConnectionMethod_ExposesSerialTransport()
     {
         await Assert.That(Enum.IsDefined(typeof(ConnectionMethod), "Serial")).IsTrue();
     }
 
+    /// <summary>Verifies default serial options match common Omron Host Link settings.</summary>
+    /// <returns>A task that represents the asynchronous test.</returns>
     [Test]
     public async Task SerialOptions_DefaultToCommonOmronHostLinkSettings()
     {
@@ -35,6 +40,8 @@ public sealed class SerialHostLinkFinsTests
         await Assert.That(options.FrameMode).IsEqualTo(OmronHostLinkFinsFrameMode.Direct);
     }
 
+    /// <summary>Verifies the default maximum frame length matches CS1 Toolbus configuration.</summary>
+    /// <returns>A task that represents the asynchronous test.</returns>
     [Test]
     public async Task SerialOptions_DefaultFrameLengthMatchesCs1ToolbusConfiguration()
     {
@@ -43,6 +50,8 @@ public sealed class SerialHostLinkFinsTests
         await Assert.That(options.MaximumFrameLength).IsEqualTo(1004);
     }
 
+    /// <summary>Verifies serial connections accept direct CPU destination node zero.</summary>
+    /// <returns>A task that represents the asynchronous test.</returns>
     [Test]
     public async Task SerialConnection_AllowsDirectCpuDestinationNodeZero()
     {
@@ -57,6 +66,8 @@ public sealed class SerialHostLinkFinsTests
         await Assert.That(plc.IsDisposed).IsFalse();
     }
 
+    /// <summary>Verifies Toolbus protocol selection through serial options.</summary>
+    /// <returns>A task that represents the asynchronous test.</returns>
     [Test]
     public async Task SerialOptions_CanSelectToolbusProtocol()
     {
@@ -73,6 +84,8 @@ public sealed class SerialHostLinkFinsTests
         await Assert.That(options.MaximumFrameLength).IsEqualTo(1004);
     }
 
+    /// <summary>Verifies the Toolbus factory applies common Toolbus serial settings.</summary>
+    /// <returns>A task that represents the asynchronous test.</returns>
     [Test]
     public async Task SerialOptions_CreateToolbusUsesCommonToolbusSettings()
     {
@@ -90,6 +103,7 @@ public sealed class SerialHostLinkFinsTests
         await Assert.That(options.MaximumFrameLength).IsEqualTo(1004);
     }
 
+    /// <summary>Verifies Toolbus validation ignores Host Link-only values.</summary>
     [Test]
     public void SerialOptions_ValidateIgnoresHostLinkOnlyValuesForToolbus()
     {
@@ -102,12 +116,16 @@ public sealed class SerialHostLinkFinsTests
         options.Validate();
     }
 
+    /// <summary>Verifies the Toolbus synchronization frame is exposed.</summary>
+    /// <returns>A task that represents the asynchronous test.</returns>
     [Test]
     public async Task ToolbusFinsFrameCodec_ExposesSynchronizationFrame()
     {
         await Assert.That(Convert.ToHexString(ToolbusFinsFrameCodec.SynchronizationFrame.ToArray())).IsEqualTo("AC01");
     }
 
+    /// <summary>Verifies Toolbus request encoding rejects too-short FINS requests.</summary>
+    /// <returns>A task that represents the asynchronous test.</returns>
     [Test]
     public async Task ToolbusFinsFrameCodec_RejectsTooShortFinsRequest()
     {
@@ -118,6 +136,8 @@ public sealed class SerialHostLinkFinsTests
         await Assert.That(ex).IsNotNull();
     }
 
+    /// <summary>Verifies Toolbus request encoding includes length and checksum.</summary>
+    /// <returns>A task that represents the asynchronous test.</returns>
     [Test]
     public async Task ToolbusFinsFrameCodec_EncodesBinaryFinsRequestWithLengthAndChecksum()
     {
@@ -128,6 +148,8 @@ public sealed class SerialHostLinkFinsTests
         await Assert.That(Convert.ToHexString(frame.ToArray())).IsEqualTo("AB000E8000020000000000000501010142");
     }
 
+    /// <summary>Verifies maximum Toolbus request length is accepted by the length field.</summary>
+    /// <returns>A task that represents the asynchronous test.</returns>
     [Test]
     public async Task ToolbusFinsFrameCodec_EncodesMaximumLengthRequestAcceptedByLengthField()
     {
@@ -140,6 +162,8 @@ public sealed class SerialHostLinkFinsTests
         await Assert.That(Convert.ToHexString(frame.Span[^2..])).IsEqualTo("02A9");
     }
 
+    /// <summary>Verifies Toolbus request encoding rejects frames beyond the length field limit.</summary>
+    /// <returns>A task that represents the asynchronous test.</returns>
     [Test]
     public async Task ToolbusFinsFrameCodec_RejectsRequestLongerThanLengthFieldAllows()
     {
@@ -150,6 +174,8 @@ public sealed class SerialHostLinkFinsTests
         await Assert.That(ex).IsNotNull();
     }
 
+    /// <summary>Verifies Toolbus responses decode back to binary FINS payloads.</summary>
+    /// <returns>A task that represents the asynchronous test.</returns>
     [Test]
     public async Task ToolbusFinsFrameCodec_DecodesToolbusFrameToBinaryFinsResponse()
     {
@@ -161,6 +187,8 @@ public sealed class SerialHostLinkFinsTests
         await Assert.That(Convert.ToHexString(decoded.ToArray())).IsEqualTo(Convert.ToHexString(payload));
     }
 
+    /// <summary>Verifies Toolbus response decoding rejects invalid start bytes.</summary>
+    /// <returns>A task that represents the asynchronous test.</returns>
     [Test]
     public async Task ToolbusFinsFrameCodec_RejectsInvalidStartByte()
     {
@@ -171,6 +199,8 @@ public sealed class SerialHostLinkFinsTests
         await Assert.That(ex.Message).Contains("0xAB");
     }
 
+    /// <summary>Verifies Toolbus response decoding rejects declared length mismatches.</summary>
+    /// <returns>A task that represents the asynchronous test.</returns>
     [Test]
     public async Task ToolbusFinsFrameCodec_RejectsDeclaredLengthMismatch()
     {
@@ -181,6 +211,8 @@ public sealed class SerialHostLinkFinsTests
         await Assert.That(ex.Message).Contains("declared length");
     }
 
+    /// <summary>Verifies Toolbus response decoding rejects too-small declared lengths.</summary>
+    /// <returns>A task that represents the asynchronous test.</returns>
     [Test]
     public async Task ToolbusFinsFrameCodec_RejectsTooSmallDeclaredLength()
     {
@@ -191,6 +223,8 @@ public sealed class SerialHostLinkFinsTests
         await Assert.That(ex.Message).Contains("length");
     }
 
+    /// <summary>Verifies Toolbus response decoding rejects too-short FINS payloads.</summary>
+    /// <returns>A task that represents the asynchronous test.</returns>
     [Test]
     public async Task ToolbusFinsFrameCodec_RejectsTooShortFinsResponsePayload()
     {
@@ -201,6 +235,8 @@ public sealed class SerialHostLinkFinsTests
         await Assert.That(ex.Message).Contains("payload");
     }
 
+    /// <summary>Verifies Toolbus response decoding rejects invalid FINS headers.</summary>
+    /// <returns>A task that represents the asynchronous test.</returns>
     [Test]
     public async Task ToolbusFinsFrameCodec_RejectsInvalidFinsResponseHeader()
     {
@@ -211,6 +247,8 @@ public sealed class SerialHostLinkFinsTests
         await Assert.That(ex.Message).Contains("FINS header");
     }
 
+    /// <summary>Verifies Toolbus response decoding rejects invalid checksums.</summary>
+    /// <returns>A task that represents the asynchronous test.</returns>
     [Test]
     public async Task ToolbusFinsFrameCodec_RejectsInvalidChecksum()
     {
@@ -221,6 +259,8 @@ public sealed class SerialHostLinkFinsTests
         await Assert.That(ex.Message.Contains("checksum", StringComparison.OrdinalIgnoreCase)).IsTrue();
     }
 
+    /// <summary>Verifies Toolbus checksum calculation wraps at sixteen bits.</summary>
+    /// <returns>A task that represents the asynchronous test.</returns>
     [Test]
     public async Task ToolbusFinsFrameCodec_CalculatesChecksumWithSixteenBitWraparound()
     {
@@ -232,6 +272,8 @@ public sealed class SerialHostLinkFinsTests
         await Assert.That(checksum).IsEqualTo((ushort)0x00FE);
     }
 
+    /// <summary>Verifies Host Link FCS calculation XORs the frame text.</summary>
+    /// <returns>A task that represents the asynchronous test.</returns>
     [Test]
     public async Task HostLinkFcs_CalculatesXorAcrossFrameText()
     {
@@ -240,6 +282,8 @@ public sealed class SerialHostLinkFinsTests
         await Assert.That(fcs).IsEqualTo("7C");
     }
 
+    /// <summary>Verifies Host Link FINS requests encode as ASCII direct Host Link frames.</summary>
+    /// <returns>A task that represents the asynchronous test.</returns>
     [Test]
     public async Task HostLinkFinsFrameCodec_EncodesBinaryFinsRequestAsAsciiDirectHostLinkFrame()
     {
@@ -256,6 +300,8 @@ public sealed class SerialHostLinkFinsTests
         await Assert.That(frame).IsEqualTo("@00FA00000000101018200640000027C*\r");
     }
 
+    /// <summary>Verifies Host Link FINS responses decode to binary FINS payloads.</summary>
+    /// <returns>A task that represents the asynchronous test.</returns>
     [Test]
     public async Task HostLinkFinsFrameCodec_DecodesAsciiDirectHostLinkResponseToBinaryFinsResponse()
     {
@@ -265,7 +311,7 @@ public sealed class SerialHostLinkFinsTests
             ResponseWaitTime = 0,
         };
         var codec = new HostLinkFinsFrameCodec(options);
-        var payload = "40000001010100001234";
+        const string payload = "40000001010100001234";
         var body = "@00FA00" + payload;
         var frame = body + HostLinkFinsFrameCodec.CalculateFcs(body) + "*\r";
 
@@ -274,6 +320,8 @@ public sealed class SerialHostLinkFinsTests
         await Assert.That(Convert.ToHexString(decoded.ToArray())).IsEqualTo("40000200000000000001010100001234");
     }
 
+    /// <summary>Verifies Host Link decoding rejects non-zero end codes.</summary>
+    /// <returns>A task that represents the asynchronous test.</returns>
     [Test]
     public async Task HostLinkFinsFrameCodec_RejectsHostLinkEndCodeFailures()
     {
@@ -284,6 +332,8 @@ public sealed class SerialHostLinkFinsTests
         await Assert.That(ex.Message).Contains("end code");
     }
 
+    /// <summary>Verifies Host Link decoding rejects invalid frame check sequences.</summary>
+    /// <returns>A task that represents the asynchronous test.</returns>
     [Test]
     public async Task HostLinkFinsFrameCodec_RejectsInvalidFcs()
     {
@@ -306,6 +356,6 @@ public sealed class SerialHostLinkFinsTests
             return ex;
         }
 
-        throw new InvalidOperationException($"Expected exception of type {typeof(TException).Name}.");
+        throw new InvalidOperationException($"Expected exception of type {nameof(TException)}.");
     }
 }
