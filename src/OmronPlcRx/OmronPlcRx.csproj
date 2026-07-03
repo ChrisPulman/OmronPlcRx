@@ -6,7 +6,7 @@
   </PropertyGroup>
   
   <ItemGroup>
-    <PackageReference Include="ReactiveUI.Primitives" Version="5.8.0" ExcludeAssets="analyzers" />
+    <PackageReference Include="ReactiveUI.Primitives" Version="6.0.0" ExcludeAssets="analyzers" />
     <PackageReference Include="ReactiveUI.Primitives.Async" Version="5.8.0" ExcludeAssets="analyzers" />
     <PackageReference Include="SerialPortRx" Version="5.0.20" ExcludeAssets="analyzers" />
   </ItemGroup>
