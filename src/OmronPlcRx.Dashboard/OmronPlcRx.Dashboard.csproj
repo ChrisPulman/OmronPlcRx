@@ -18,7 +18,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="ReactiveUI.WPF" Version="24.0.0-beta.2" />
+    <PackageReference Include="ReactiveUI.WPF" Version="24.0.0-beta.3" />
     <PackageReference Include="Splat" Version="20.0.0" />
   </ItemGroup>
 
